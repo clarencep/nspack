@@ -41,8 +41,13 @@ function NSPack(config){
 
 extend(NSPack.prototype, {
     async build(){
+        this.buildBeginAt = new Date()
+
         await this._resolveExternalModules()
         await this._buildFromEntries()
+
+        this.buildEndAt = new Date()
+        this.buildSpentTimeMs = +this.buildEndAt - (+this.buildBeginAt)
 
         this.debugLevel > 1 && this.debugDumpAllModules()
         this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
@@ -107,6 +112,13 @@ extend(NSPack.prototype, {
 
         const resolvingCssModule = 
             this._loadSource(entryModule.css(entryModule))
+                .catch(e => {
+                    if (!entryModule.ignoreMissingCss){
+                        throw e
+                    }
+
+                    return {}
+                })
                 .then(({sourceCode, filePath}) => 
                     this._addModuleIfNotExists({
                         name: entryModule.name + '.css',
@@ -470,6 +482,8 @@ extend(NSPack.prototype, {
         }
     },
     debugDumpAllEntriesOutputs(){
+        debug("Done build. Spent %s(s)", (this.buildSpentTimeMs / 1000).toFixed(3))
+
         for (let entryModule of Object.values(this._config.entry)){
             debug("%o:", entryModule.name)
             debug("\t%o: %o", entryModule.bundle.script.outputName, entryModule.bundle.script.hash)
