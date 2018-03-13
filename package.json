@@ -1,6 +1,6 @@
 {
   "name": "nspack",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "description": "A non-standard pack tool",
   "main": "index.js",
   "scripts": {
