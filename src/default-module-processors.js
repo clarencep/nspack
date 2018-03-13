@@ -1,18 +1,48 @@
+
+const debug = require('debug')('nspack')
 const splitVueModule = require('./split-vue-module')
 const jsVarRegex = /^[a-zA-Z0-9_$]+$/
 
 module.exports = {
-    // todo...
     js: [
-        function (module, packer){
+        async function (module, packer){
+            debug("process module %o, source: %o", module.fullPathName, module.source)
             module.builtType = 'js'
+            if (!module.source){
+                module.builtSource = module.source
+                return
+            }
             
             let processRequires = true
+            let dependenciesProcesses = []
+
+            let resolvingModules = {}
+            let resolvingModulesByPlaceholderId = {}
+            let nextPlaceholderId = 1
             
             const lineRegexHandlers = getJsLinesRegexHandlers((reqModuleNameStrLiteral, strQuote) => {
                 const reqModuleName = parseJsStr(reqModuleNameStrLiteral, strQuote)
-                const reqModule = packer._resolveModule(moduleName, module.fullFileDirName)
-                module.dependencies.push(reqModule)
+
+                if (reqModuleName in resolvingModules){
+                    return resolvingModules[reqModuleName].idPlaceholder
+                }
+
+                const idPlaceholderId = nextPlaceholderId++
+                const idPlaceholder = `__${idPlaceholderId}_MODULE_ID_PLACEHOLDER__`
+
+                const resolvingInfo = {
+                    idPlaceholder,
+                    resolving: packer._resolveModule(reqModuleName, module.fullFileDirName)
+                                    .then(reqModule => {
+                                        resolvingInfo.id = reqModule.id
+                                        module.dependencies.push(reqModule)
+                                        dependenciesProcesses.push(packer._processModule(reqModule))
+                                    })
+                }
+
+                resolvingModules[reqModuleName] = resolvingModulesByPlaceholderId[idPlaceholderId] = resolvingInfo
+
+                return idPlaceholder
             })
 
             const lines = module.source.split("\n")
@@ -24,7 +54,7 @@ module.exports = {
     
                     if (processRequires){
                         for (let handler of lineRegexHandlers){
-                            line = handler[0].replace(line, handler[1])
+                            line = line.replace(handler[0], handler[1])
                         }
                     }
                 } else {
@@ -34,7 +64,15 @@ module.exports = {
                 lines[i] = line
             }
 
+            await Promise.all(Object.values(resolvingModules).map(x => x.resolving))
+
+            for (let i = 0, n = lines.length; i < n; i++){
+                lines[i] = lines[i].replace(/__(\d+)_MODULE_ID_PLACEHOLDER__/g, ($0, $1) => resolvingModulesByPlaceholderId[+$1].id)
+            }
+
             module.builtSource = lines.join("\n")
+
+            await Promise.all(dependenciesProcesses)
         }
     ],
 
@@ -61,12 +99,12 @@ module.exports = {
             const lines = []
             if (style){
                 module.dependencies.push(style)
-                lines.push(`require(${style.id})`)
+                lines.push(`__require_module__(${style.id})`)
             }
 
             if (script){
                 module.dependencies.push(script)
-                lines.push(`const component = require(${script.id})`)
+                lines.push(`const component = __require_module__(${script.id})`)
             } else {
                 lines.push(`const component = {}`)
             }
@@ -74,7 +112,7 @@ module.exports = {
             if (template){
                 // todo: compile template
                 module.dependencies.push(template)
-                lines.push(`component.template = require(${template.id})`)
+                lines.push(`component.template = __require_module__(${template.id})`)
             }
 
             lines.push(`module.exports = component`)
@@ -86,7 +124,7 @@ module.exports = {
     text: [
         textProcessor,
     ],
-    'vue.template': [
+    'vue.tpl': [
         textProcessor,
     ]
 }
@@ -109,7 +147,7 @@ function getJsLinesRegexHandlers(resolveModuleId){
             // [2] => "'"
             // [3] => "bar"
             /([^0-9a-zA-Z_.$]|^)require\s*\(\s*(['"`])(\S+)['"`]\s*\)/,
-            ($0, $1, $2, $3) => ` require(${resolveModuleId($3, $2)}/*${$3}*/)`, // todo: 字符串转义？
+            ($0, $1, $2, $3) => ` __require_module__(${resolveModuleId($3, $2)}/*${$3}*/)`, // todo: 字符串转义？
         ],
         [
             // import * as foo from 'bar';
@@ -118,7 +156,7 @@ function getJsLinesRegexHandlers(resolveModuleId){
             // [2] => `'`
             // [3] => `bar`
             /import\s+\*\s+as\s+(\S+)\s+from\s+(['"`])(\S+)['"`]/,
-            ($0, $1, $2, $3) => `const ${$1} = require(${resolveModuleId($3, $2)})/*${$0}*/`,
+            ($0, $1, $2, $3) => `const ${$1} = __require_module__(${resolveModuleId($3, $2)})/*${$0}*/`,
         ],
         [
             // import foo from 'bar';
@@ -135,10 +173,17 @@ function getJsLinesRegexHandlers(resolveModuleId){
             /import\s+(.+?)\s+from\s+(['"`])(\S+)['"`]/,
             ($0, $1, $2, $3) => (
                 jsVarRegex.test($1) 
-                ? `const ${$1} = __extract_default__(require(${resolveModuleId($3, $2)}))/*${$0}*/`
-                : `const ${$1} = require(${resolveModuleId($3, $2)})/*${$0}*/`
+                ? `const ${$1} = __extract_default__(__require_module__(${resolveModuleId($3, $2)}))/*${$0}*/`
+                : `const ${$1} = __require_module__(${resolveModuleId($3, $2)})/*${$0}*/`
             ),
         ],
+        [
+            // export default xxx
+            // -> module.exports = xxx
+            /export\s+default\s+/,
+            () => `module.exports = `, // todo: __esModule = true...
+        ],
+        // todo: export xxx
     ]
 }
 

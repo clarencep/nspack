@@ -5,15 +5,6 @@
 const styleLangRe = /lang=['"]?([a-zA-Z0-9]+)['"]?/
 
 module.exports = async function splitVueModule(vueModule, packer){
-
-    const templateTagBegin = /<template(>|\s)/g
-    const templateTagEnd = /<\/template>/g
-    const scriptTagBegin  = /<script(>|\s)/g
-    const scriptTagEnd = /<\/script>/g
-    const styleTagBegin = /<style(>|\s)/g
-    const styleTagEnd = /<\/style>/g
-
-
     const vueSource = vueModule.source
     const templateText = searchTextAroundTag('template', vueSource)
     const scriptText = searchTextAroundTag('script', vueSource)
@@ -24,46 +15,62 @@ module.exports = async function splitVueModule(vueModule, packer){
     const jobs = []
     
     if (templateText){
-        jobs.push(async () => {
-            template = await packer._addModuleIfNotExists({
-                name: vueModule.name + '.template',
-                isInternal: true,
-                file: 'internal://' + vueModule.fullPathName + '.template',
-                type: 'vue.template',
-                source: templateText.text,
-            })
+        jobs.push(
+            packer._addModuleIfNotExists({
+                    name: vueModule.name + '.template',
+                    isInternal: true,
+                    file: 'internal://' + vueModule.fullPathName + '.template',
+                    fullFileDirName: vueModule.fullFileDirName,
+                    relativePath: 'internal://' + vueModule.relativePath + '.template',
+                    baseDir: vueModule.baseDir,
+                    type: 'vue.tpl',
+                    source: templateText.text,
+                })
+                .then(m => packer._processModule(m))
+                .then(m => {
+                    template = m
+                })
 
-            await packer._processModule(template)
-        })
+        )
     }
 
     if (scriptText){
-        jobs.push(async () => {
-            script = await packer._addModuleIfNotExists({
-                name: vueModule.name + '.script',
-                isInternal: true,
-                file: 'internal://' + vueModule.fullPathName + '.script',
-                type: 'js',
-                source: scriptText.text,
-            })
-    
-            await packer._processModule(script)
-        })
+        jobs.push(
+            packer._addModuleIfNotExists({
+                    name: vueModule.name + '.script',
+                    isInternal: true,
+                    file: 'internal://' + vueModule.fullPathName + '.script',
+                    fullFileDirName: vueModule.fullFileDirName,
+                    relativePath: 'internal://' + vueModule.relativePath + '.script',
+                    baseDir: vueModule.baseDir,
+                    type: 'js',
+                    source: scriptText.text,
+                })
+                .then(m => packer._processModule(m))
+                .then(m => {
+                    script = m
+                })
+        )
     }
 
 
     if (styleText){
-        jobs.push(async () => {
-            style = await packer._addModuleIfNotExists({
-                name: vueModule.name + '.style',
-                isInternal: true,
-                file: 'internal://' + vueModule.fullPathName + '.style',
-                type: styleText.lang || 'css',
-                source: styleText.text,
-            })
-    
-            await packer._processModule(script)
-        })
+        jobs.push(
+            packer._addModuleIfNotExists({
+                    name: vueModule.name + '.style',
+                    isInternal: true,
+                    file: 'internal://' + vueModule.fullPathName + '.style',
+                    fullFileDirName: vueModule.fullFileDirName,
+                    relativePath: 'internal://' + vueModule.relativePath + '.style',
+                    baseDir: vueModule.baseDir,
+                    type: styleText.lang || 'css',
+                    source: styleText.text,
+                })
+                .then(m => packer._processModule(m))
+                .then(m => {
+                    style = m
+                })
+        )
     }
 
     await Promise.all(jobs)

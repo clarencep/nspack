@@ -1,10 +1,16 @@
 const fs = require('fs')
 const path = require('path')
 const cb2p = require('./cb2p')
+const debug = require('debug')('nspack')
+
 const extend = Object.assign
 
 const readFile = cb2p(fs.readFile)
-const fstat = cb2p(fs.stat)
+
+const {
+    tryFStat,
+    tryReadJsonFileContent,
+} = require('./utils')
 
 module.exports = NodeModuleResolver
 
@@ -29,7 +35,7 @@ extend(NodeModuleResolver.prototype, {
 
             // try read node modules
             for (let n = baseDirParts.length - 1; n > 0; n--){
-                const r = await this._tryFileCached(path.join(baseDirParts.slice(0, n), 'node_modules', moduleName))
+                const r = await this._tryFileCached(path.join(baseDirParts.slice(0, n).join(path.sep), 'node_modules', moduleName))
                 if (r){
                     return r
                 }
@@ -50,7 +56,7 @@ extend(NodeModuleResolver.prototype, {
         let fileIsDir = false
 
         // try directly the file
-        const r = tryFStat(filepath)
+        const r = await tryFStat(filepath)
         if (r){
             if (r.isFile()){
                 return filepath
@@ -61,7 +67,7 @@ extend(NodeModuleResolver.prototype, {
 
         // try jquery => jquery.js
         jsFile = filepath + '.js'
-        const r2 = tryFStat(jsFile)
+        const r2 = await tryFStat(jsFile)
         if (r2 && r2.isFile()){
             return jsFile
         }
@@ -74,7 +80,7 @@ extend(NodeModuleResolver.prototype, {
             } else {
                 // try index.js in the directory
                 const dirIndexJs = path.join(filepath, 'index.js')
-                const r3 = tryFStat(dirIndexJs)
+                const r3 = await tryFStat(dirIndexJs)
                 if (r3 && r3.isFile()){
                     return dirIndexJs
                 }
@@ -85,43 +91,3 @@ extend(NodeModuleResolver.prototype, {
         return false;
     }
 })
-
-async function tryFStat(file){
-    return new Promise(resolve => {
-        fs.fstat(file, (err, stats) => {
-            if (err){
-                resolve(false)
-            } else {
-                resolve(state)
-            }
-        })
-    })
-}
-
-async function tryReadFileContent(file, encoding='utf8'){
-    return new Promise(resolve => {
-        fs.readFile(file, encoding, (err, content) => {
-            if (err){
-                resolve(false)
-            } else {
-                resolve(content)
-            }
-        })
-    })
-}
-
-async function tryReadJsonFileContent(file, encoding='utf8'){
-    return new Promise(resolve => {
-        fs.readFile(file, encoding, (err, content) => {
-            if (err){
-                resolve(false)
-            } else {
-                try {
-                    resolve(JSON.parse(content))
-                } catch (e){
-                    resolve(false)
-                }
-            }
-        })
-    })
-}

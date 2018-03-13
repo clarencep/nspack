@@ -3,14 +3,22 @@ const path = require('path')
 const md5 = require('md5')
 const cb2p = require('./cb2p')
 const babel = require('babel-core')
+const debug = require('debug')('nspack')
 
 const defaultModuleProcessors = require('./default-module-processors')
 const NodeModuleResolver = require('./node-module-resolver')
+
+const {
+    tryFStat,
+    tryReadJsonFileContent,
+} = require('./utils')
 
 const extend = Object.assign
 
 const readFile = cb2p(fs.readFile)
 const writeFile = cb2p(fs.writeFile)
+const stat = cb2p(fs.stat)
+const mkdir = cb2p(fs.mkdir)
 
 module.exports = NSPack
 
@@ -20,7 +28,10 @@ function NSPack(config){
     }
 
     this._config = sanitizeConfig(config)
+    this.debugLevel = this._config.debugLevel || 1
+
     this._nextModuleId = 1
+    this._externalModules = {} // moduleName => module
     this._modules = {} // id => module
     this._modulesByFullPathName = {} // fullPathName => module
     this._built = {}
@@ -32,6 +43,10 @@ extend(NSPack.prototype, {
     async build(){
         await this._resolveExternalModules()
         await this._buildFromEntries()
+
+        this.debugLevel > 1 && this.debugDumpAllModules()
+        this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
+
         return this._built
     },
     async _resolveExternalModules(){
@@ -46,10 +61,14 @@ extend(NSPack.prototype, {
                 this._addModuleIfNotExists({
                     name: moduleName,
                     baseDir: this._config.entryBase,
-                    source: `module.exports = ${externalModules[moduleName]}`,
+                    builtSource: `module.exports = ${externalModules[moduleName]}`,
                     file: 'external://' + moduleName,
+                    type: 'js',
+                    builtType: 'js',
                     isExternal: true,
                     processed: true,
+                }).then(module => {
+                    this._externalModules[moduleName] = module
                 })
             )
         }
@@ -71,23 +90,31 @@ extend(NSPack.prototype, {
         await Promise.all(jobs)
     },
     async _buildEntryModule(entryModule){
-        this._log(`building ${entryModule.name}...`)
+        debug(`building entry module "${entryModule.name}"...`)
 
         const baseDir = this._config.entryBase
         entryModule.entry = {name: entryModule.name, baseDir: baseDir}
-        const resolvingJsModule = this._addModuleIfNotExists({
-            name: entryModule.name + '.js',
-            baseDir: baseDir,
-            fullPathName: path.join(baseDir, entryModule.name + '.js'),
-            source: await entryModule.js(entryModule)
-        }).then(module => this._processModule(module))
+        const resolvingJsModule = 
+            this._loadSource(entryModule.js(entryModule))
+                .then(({sourceCode, filePath}) => 
+                    this._addModuleIfNotExists({
+                        name: entryModule.name + '.js',
+                        baseDir: baseDir,
+                        fullPathName: filePath || path.join(baseDir, entryModule.name + '.js'),
+                        source: sourceCode,
+                    }))
+                .then(module => this._processModule(module))
 
-        const resolvingCssModule = this._addModuleIfNotExists({
-            name: entryModule.name + '.css',
-            baseDir: baseDir,
-            fullPathName: path.join(baseDir, entryModule.name + '.css'),
-            source: await entryModule.css(entryModule)
-        }).then(module => this._processModule(module))
+        const resolvingCssModule = 
+            this._loadSource(entryModule.css(entryModule))
+                .then(({sourceCode, filePath}) => 
+                    this._addModuleIfNotExists({
+                        name: entryModule.name + '.css',
+                        baseDir: baseDir,
+                        fullPathName: filePath || path.join(baseDir, entryModule.name + '.css'),
+                        source: sourceCode,
+                    }))
+                .then(module => this._processModule(module))
 
         const [jsModule, cssModule] = await Promise.all([resolvingJsModule, resolvingCssModule])
 
@@ -99,22 +126,37 @@ extend(NSPack.prototype, {
 
         jsModule.outputSource = await this._bundleJsModule(jsModule)
         jsModule.hash = this._hash(jsModule.outputSource)
-        jsModule.outputName = this._buildOutputName(jsModule)
+        jsModule.outputName = this._buildOutputName({
+            name: entryModule.name,
+            hash: jsModule.hash,
+            type: 'js',
+        })
 
         cssModule.outputSource = this._bundleCssModule(cssModule)
         cssModule.hash = this._hash(cssModule.outputSource)
-        cssModule.outputName = this._buildOutputName(cssModule)
+        cssModule.outputName = this._buildOutputName({
+            name: entryModule.name,
+            hash: cssModule.hash,
+            type: 'css',
+        })
 
         entryModule.bundle = {
-            jsModule: jsModule,
-            scriptTags: `<script src="/${jsModule.outputName}"></script>`,
-            cssModule: cssModule,
-            styleTags: `<link rel="stylesheet" href="/${cssModule.outputName}" >`
+            script: jsModule,
+            scriptsTags: jsModule.outputSource ? `<script src="/${jsModule.outputName}"></script>` : '',
+            style: cssModule,
+            stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${cssModule.outputName}" >` : '',
+            html: null,
         }
 
         const html = await entryModule.html(entryModule)
         const htmlHash = this._hash(html)
         const htmlOutputName = this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'})
+        
+        entryModule.bundle.html = {
+            outputSource: html,
+            hash:         htmlHash,
+            outputName:   htmlOutputName,
+        }
 
         await Promise.all([
             this._outputFile(jsModule.outputName, jsModule.outputSource),
@@ -137,6 +179,19 @@ extend(NSPack.prototype, {
                     for (let x of module.dependencies){
                         if (x.builtType === 'js'){
                             bundleRec(x)
+                        } else if (x.builtType === 'css') {
+                            if (jsModule.cssExtracted){
+                                bundled[x.id] = {
+                                    id: x.id,
+                                    name: x.name,
+                                    file: x.relativePath,
+                                    source: "",
+                                }
+                            } else {
+                                throw new Error("Logic Error: css modules still exists when bundling.")
+                            }
+                        } else {
+                            throw new Error(`Unknown builtType: ${x.builtType} when bundling ${x.fullPathName} of ${jsModule.fullPathName}`)
                         }
                     }
                 }
@@ -187,6 +242,10 @@ extend(NSPack.prototype, {
                 for (let x of dependencies){
                     if (x.builtType === 'css'){
                         this._transformCssModuleToInjectCssScript(x)
+                    } else if (x.builtType === 'js') {
+                        transformRec(x.dependencies)
+                    } else {
+                        // ignore other builtTypes
                     }
                 }
             }
@@ -199,57 +258,101 @@ extend(NSPack.prototype, {
         const styleText = JSON.stringify(module.builtSource)
         module.builtSource = `module.exports = require(${injectStyleModule.id}/*${injectStyleModule.name}*/)(${styleText})`
         module.builtType = 'js'
+        module.dependencies.push(injectStyleModule)
     },
     _getInjectStyleModule(){
         const injectStyleModuleName = '__inject_style__'
-        return this._addModuleIfNotExists({
-            name: injectStyleModuleName,
-            file: 'internal://' + injectStyleModuleName,
+        return this._addInternalModule(injectStyleModuleName, getInjectStyleModuleSource)
+    },
+    _addInternalModule(moduleName, getModuleSource){
+        const moduleFile = 'internal://' + moduleName
+        if (moduleFile in this._modulesByFullPathName){
+            return this._modulesByFullPathName[moduleFile]
+        }
+
+        const module = {
+            id: this._nextModuleId++,
+            name: moduleName,
+            file: moduleFile,
+            fullPathName: moduleFile,
+            fullFileDirName: false,
+            relativePath: moduleFile,
             type: 'js',
-            source: getInjectStyleModuleSource(),
+            builtType: 'js',
+            builtSource: getModuleSource(),
             isInternal: true,
             processed: true,
-        })
+        }
+
+        this._modules[module.id] = module
+        this._modulesByFullPathName[moduleFile] = module
+        return module
     },
     async _transCompile(jsCode){
         const babelConfig = await this._loadBabelRc()
 
         const res = babel.transform(jsCode, babelConfig)
 
-        return res.code
+        return `!(function(){${res.code}})();`
     },
     async _loadBabelRc(){
         if (this._config.babelrc === false){
             return false
         } else if (typeof this._config.babelrc === 'string'){
             this._config.babelrcFile = this._config.babelrc
-            return this._config.babelrc = await readJsonFile(this._config.babelrc)
+            return this._config.babelrc = await tryReadJsonFileContent(this._config.babelrc)
         } else if (this._config.babelrc === true || this._config.babelrc === undefined){
             this._config.babelrcFile = '.babelrc'
-            return this._config.babelrc = await readJsonFile('.babelrc')
+            return this._config.babelrc = await tryReadJsonFileContent('.babelrc')
         } else {
             return this._config.babelrc
         }
     },
     _buildOutputName({type, name, hash}){
+        debug("_buildOutputName(%o)", {type, name, hash})
         const defaultOutputConfig = this._config.output['*']
         const moduleOutputConfig = this._config.output[name] || defaultOutputConfig
         const template = moduleOutputConfig[type] || defaultOutputConfig[type]
         return template.replace('[name]', name).replace('[hash]', hash)
     },
     _hash(content){
-        return md5(content).substring(0, this._config.hash_length)
+        return md5(content || '').substring(0, this._config.hash_length)
     },
-    async _outputFile(filepath, content){
+    async _outputFile(outputName, content){
         if (content === undefined){
             return
+        }
+
+        const filepath = this._config.resolveOutputFile(outputName)
+        const fileDir = path.dirname(filepath)
+        try {
+            const st = await stat(fileDir)
+            if (!st || !st.isDirectory()){
+                throw new Error(`Invalid output path/directory: ${fileDir}`)
+            }
+        } catch (e){
+            debug("stat(%o) failed: %o", fileDir, e)
+            try {
+                await mkdir(fileDir)
+            } catch(e){
+                if (e.code === 'EEXIST'){
+                    // ignore
+                }
+
+                throw e
+            }
         }
 
         return writeFile(filepath, content, 'utf8')
     },
     async _resolveModule(moduleName, baseDir){
         this._log(`resolveing ${moduleName} in ${baseDir}`)
-        const module = this._addModuleIfNotExists({
+
+        if (moduleName in this._config.externals){
+            return this._externalModules[moduleName]
+        } 
+        
+        const module = await this._addModuleIfNotExists({
             name: moduleName,
             baseDir: baseDir,
         })
@@ -259,9 +362,16 @@ extend(NSPack.prototype, {
         return module
     },
     async _processModule(module){
+        if (module.processed){
+            return
+        }
+
+        debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
+
         module.dependencies = []
 
         if (!('source' in module)){
+            debug("read module source from file: %o, module: %o", module.fullPathName, module)
             module.source = await readFile(module.fullPathName, "utf8")
         }
 
@@ -269,10 +379,10 @@ extend(NSPack.prototype, {
             module.fullFileDirName = path.dirname(module.fullPathName)
         }
         
-        const processors = this.moduleProcessors[module.type]
+        const processors = this._config.moduleProcessors[module.type]
         if (processors){
             for (let processor of processors){
-                processor.process(module, this)
+                await processor.call(processor, module, this)
             }
         } else {
             throw new Error(`No processor for ${module.type} when processing file ${module.fullPathName}`)
@@ -284,9 +394,11 @@ extend(NSPack.prototype, {
         if (!('fullPathName' in module)){
             if (module.isInternal || module.isExternal){
                 module.fullPathName = module.file
-                module.relativePath = module.file
+                if (!('relativePath' in module)){
+                    module.relativePath = module.file
+                }
             } else {
-                module.fullPathName = await _resolveModuleFullPathName(module.name, module.baseDir)
+                module.fullPathName = await this._resolveModuleFullPathName(module.name, module.baseDir)
             }
         }
 
@@ -314,15 +426,56 @@ extend(NSPack.prototype, {
         return module
     },
     async _resolveModuleFullPathName(moduleName, baseDir) {
-
         if (moduleName[0] === '@'){
-            return path.join(this._config.entryBase, moduleName)
+            return path.join(this._config.entryBase, moduleName.substring(1))
         }
 
         return await this._nodeModuleResolver.resolveModuleFullPathName(moduleName, baseDir)
     },
     _log(msg){
         console.log(msg)
+    },
+    async _loadSource(src){
+        src = await src
+        if (src === undefined){
+            return {}
+        }
+
+        if (typeof src === 'string'){
+            return {sourceCode: src}
+        }
+
+        if (typeof src === 'object' && src){
+            if (src.file && !src.sourceCode){
+                const srcFilePath = this._config.resolveEntryFile(src.file)
+                debug("loadSource: reading file: %o", srcFilePath)
+                return readFile(srcFilePath, src.encoding || 'utf8')
+                        .then(data => ({filePath: srcFilePath, sourceCode: data}))
+            } else {
+                return src
+            }
+        }
+
+        return {}
+    },
+    
+    debugDumpAllModules(){
+        debug("all modules: ")
+        for (let i = 0, n = this._nextModuleId; i < n; i++){
+            let m = this._modules[i]
+            if (m){
+                debug("\t[%o]\t%o\t%o\t%o (%o)", 
+                    i, m.type, m.builtType, m.name, m.fullPathName)
+            }
+        }
+    },
+    debugDumpAllEntriesOutputs(){
+        for (let entryModule of Object.values(this._config.entry)){
+            debug("%o:", entryModule.name)
+            debug("\t%o: %o", entryModule.bundle.script.outputName, entryModule.bundle.script.hash)
+            debug("\t%o: %o", entryModule.bundle.style.outputName, entryModule.bundle.style.hash)
+            debug("\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash)
+        }
     },
 })
 
@@ -351,7 +504,7 @@ function sanitizeConfig(config){
 
         // if string, assume it is a path
         if (typeof entry.js === 'string') {
-            entry.js = makeFileReaderFunc(r.resolveEntryFile(entry.js))
+            entry.js = makeSourceFileReaderFunc(r.resolveEntryFile(entry.js))
         } else if (typeof entry.js === 'function'){
             // nothing to do
         } else if (!entry.js){
@@ -359,7 +512,7 @@ function sanitizeConfig(config){
         }
 
         if (typeof entry.css === 'string'){
-            entry.css = makeFileReaderFunc(r.resolveEntryFile(entry.css))
+            entry.css = makeSourceFileReaderFunc(r.resolveEntryFile(entry.css))
         } else if (typeof entry.css === 'function'){
             // nothing to do
         } else if (!entry.css){
@@ -396,17 +549,26 @@ function sanitizeConfig(config){
 }
 
 
-function makeFileReaderFunc(filepath, encoding='utf8'){
-    return () => readFile(filepath, encoding)
+function makeSourceFileReaderFunc(filepath, encoding='utf8'){
+    return () => {
+        debug("readFile: %o", filepath)
+        return readFile(filepath, encoding)
+                 .then(data => ({filePath: filepath, sourceCode: data}))
+    }
 }
 
 function buildJsBundleCode(modules, entryModuleId=0){
     const modulesCodes = []
     
-    for (let module of modules){
-        modulesCodes.push(module.id + ':')
-        modulesCodes.push(wrapModuleCode(module.id, module.name, (module.file || module.relativePath || module.name), module.source))
-        modulesCodes.push(",\n")
+    for (let i = 0, n = modules.length; i < n; i++){
+        const module = modules[i]
+        if (module){
+            modulesCodes.push("\n")
+            modulesCodes.push(wrapModuleCode(module.id, module.source, (module.file || module.relativePath || module.name)))
+            modulesCodes.push(",")
+        } else {
+            modulesCodes.push(",")
+        }
     }
 
     return `
@@ -422,12 +584,18 @@ function buildJsBundleCode(modules, entryModuleId=0){
         return m.exports;
     };
     require(${entryModuleId});
-})({${modulesCodes.join("")}});`
+})([${modulesCodes.join("")}]);
+
+function __extract_default__(module){
+    return module.__esModule ? module.default : module
 }
 
-function wrapModuleCode(moduleId, moduleName, moduleFile, source){
+`
+}
+
+function wrapModuleCode(moduleId, source, moduleFile){
     return `
-// module#${moduleId}: ${moduleName}, file: ${moduleFile}
+// module#${moduleId}: file: ${moduleFile}
 function(__require_module__, module, exports){
     ${source}
 }
