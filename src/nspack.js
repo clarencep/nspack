@@ -178,9 +178,9 @@ extend(NSPack.prototype, {
         }
 
         await Promise.all([
-            this._outputFile(jsModule.outputName, jsModule.outputSource),
-            this._outputFile(cssModule.outputName, cssModule.outputSource),
-            this._outputFile(htmlOutputName, html),
+            this._outputFile(jsModule.outputName, jsModule.outputSource, entryModule, 'js'),
+            this._outputFile(cssModule.outputName, cssModule.outputSource, entryModule, 'css'),
+            this._outputFile(htmlOutputName, html, entryModule, 'html'),
         ])
 
         return entryModule
@@ -338,21 +338,26 @@ extend(NSPack.prototype, {
     _hash(content){
         return md5(content || '').substring(0, this._config.hash_length)
     },
-    async _outputFile(outputName, content){
+    async _outputFile(outputName, content, entryModule, outputType){
         if (content === undefined){
             return
         }
 
         const filePath = this._config.resolveOutputFile(outputName)
         const fileDir = path.dirname(filePath)
+        const params = {
+            entryModule,
+            outputName, outputType,
+            filePath, fileDir,
+            content,
+        }
 
-        if (await this._config.hooks.outputFile({outputName, filePath, fileDir, content}) === false){
+        if (await this._config.hooks.outputFile(params) === false){
             return
         }
 
-        await this._mkdirIfNotExists(fileDir)
-
-        return this._callFsOpAsync('writeFile', filePath, content, 'utf8')
+        await this._mkdirIfNotExists(params.fileDir)
+        return this._callFsOpAsync('writeFile', params.filePath, params.content, 'utf8')
     },
     async _resolveModule(moduleName, baseDir){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
