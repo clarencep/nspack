@@ -116,9 +116,8 @@ module.exports = {
             }
 
             if (template){
-                // todo: compile template
                 module.dependencies.push(template)
-                lines.push(`component.template = __require_module__(${template.id})`)
+                lines.push(`__extend__(component, __require_module__(${template.id}))`)
             }
 
             lines.push(`module.exports = component`)
@@ -131,7 +130,7 @@ module.exports = {
         textProcessor,
     ],
     'vue.tpl': [
-        textProcessor,
+        require('./nspack-processor-vue-template-compiler'),
     ]
 }
 

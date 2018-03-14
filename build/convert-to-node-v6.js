@@ -10,7 +10,9 @@ var packageInfoMod = {
     "babel-core": "^6.26.0",
     "babel-polyfill": "^6.26.0",
     "debug": "^3.1.0",
-    "md5": "^2.2.1"
+    "md5": "^2.2.1",
+    "vue-template-compiler": "^2.5.16",
+    "vue-template-es2015-compiler": "^1.6.0"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",

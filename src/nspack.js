@@ -272,7 +272,7 @@ extend(NSPack.prototype, {
     _transformCssModuleToInjectCssScript(module){
         const injectStyleModule = this._getInjectStyleModule()
         const styleText = JSON.stringify(module.builtSource)
-        module.builtSource = `module.exports = require(${injectStyleModule.id}/*${injectStyleModule.name}*/)(${styleText})`
+        module.builtSource = `module.exports = __require_module__(${injectStyleModule.id}/*${injectStyleModule.name}*/)(${styleText})`
         module.builtType = 'js'
         module.dependencies.push(injectStyleModule)
     },
@@ -591,6 +591,10 @@ function __extract_default__(module){
 
 function __set_esModule_flag__(exports){
     exports.__esModule = true
+}
+
+function __extend__(...args){
+    Object.assign(...args)
 }
 
 `
