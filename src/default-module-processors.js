@@ -117,10 +117,10 @@ module.exports = {
 
             if (template){
                 module.dependencies.push(template)
-                lines.push(`__extend__(component, __require_module__(${template.id}))`)
+                lines.push(`module.exports = __extend__(component, __require_module__(${template.id}))`)
+            } else {
+                lines.push(`module.exports = component`)
             }
-
-            lines.push(`module.exports = component`)
 
             module.builtSource = lines.join("\n")
         }
