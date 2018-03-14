@@ -594,7 +594,7 @@ function __set_esModule_flag__(exports){
 }
 
 function __extend__(...args){
-    Object.assign(...args)
+    return Object.assign(...args)
 }
 
 `
