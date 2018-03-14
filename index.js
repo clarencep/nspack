@@ -1,2 +1,2 @@
-module.exports = require('./src/nspack.js')
+module.exports = require('./lib/nspack.js')
 

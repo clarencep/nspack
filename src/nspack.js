@@ -54,6 +54,10 @@ extend(NSPack.prototype, {
 
         return this._built
     },
+    async addModule(module){
+        return this._addModuleIfNotExists(module)
+                   .then(m => this._processModule(m))
+    },
     async _resolveExternalModules(){
         const externalModules = this._config.externals
         if (!externalModules){
@@ -583,6 +587,10 @@ function buildJsBundleCode(modules, entryModuleId=0){
 
 function __extract_default__(module){
     return module.__esModule ? module.default : module
+}
+
+function __set_esModule_flag__(exports){
+    exports.__esModule = true
 }
 
 `

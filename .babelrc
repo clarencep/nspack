@@ -1,0 +1,16 @@
+{
+    "presets": [
+        [
+            "latest",
+            {
+                "targets": {
+                    "node": "6.9"
+                },
+                "es2015": {
+                    "modules": false
+                }
+            }
+        ],
+        "stage-2"
+    ]
+}

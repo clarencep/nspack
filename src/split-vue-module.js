@@ -16,7 +16,7 @@ module.exports = async function splitVueModule(vueModule, packer){
     
     if (templateText){
         jobs.push(
-            packer._addModuleIfNotExists({
+            packer.addModule({
                     name: vueModule.name + '.template',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.template',
@@ -26,7 +26,6 @@ module.exports = async function splitVueModule(vueModule, packer){
                     type: 'vue.tpl',
                     source: templateText.text,
                 })
-                .then(m => packer._processModule(m))
                 .then(m => {
                     template = m
                 })
@@ -36,7 +35,7 @@ module.exports = async function splitVueModule(vueModule, packer){
 
     if (scriptText){
         jobs.push(
-            packer._addModuleIfNotExists({
+            packer.addModule({
                     name: vueModule.name + '.script',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.script',
@@ -44,9 +43,8 @@ module.exports = async function splitVueModule(vueModule, packer){
                     relativePath: 'internal://' + vueModule.relativePath + '.script',
                     baseDir: vueModule.baseDir,
                     type: 'js',
-                    source: scriptText.text,
+                    source: fixVueScriptExportDefault(scriptText.text),
                 })
-                .then(m => packer._processModule(m))
                 .then(m => {
                     script = m
                 })
@@ -56,7 +54,7 @@ module.exports = async function splitVueModule(vueModule, packer){
 
     if (styleText){
         jobs.push(
-            packer._addModuleIfNotExists({
+            packer.addModule({
                     name: vueModule.name + '.style',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.style',
@@ -66,7 +64,6 @@ module.exports = async function splitVueModule(vueModule, packer){
                     type: styleText.lang || 'css',
                     source: styleText.text,
                 })
-                .then(m => packer._processModule(m))
                 .then(m => {
                     style = m
                 })
@@ -144,3 +141,9 @@ function searchTextAroundTag(tagName, source){
 
     return false
 }
+
+function fixVueScriptExportDefault(sourceCode){
+    return sourceCode.replace(/(^|[^0-9a-zA-Z_.$])export\s+default\s+/mg,  ($0, $1) => $1 + 'module.exports = ')
+}
+
+
