@@ -39,7 +39,7 @@ fs.writeFileSync(packageJsonFile, JSON.stringify(packageInfo, null, '  '), 'utf8
 console.log("updating .travis.yml")
 var travisYmlFile = path.join(PACKAGE_ROOT, '.travis.yml')
 replaceInFile(travisYmlFile, /^(\s+)-(\s+)'9.3'/m, function($0, $1){
-    return $1 + ["- '6.9'", "- '7'", "- '8'", "- '9"].join("\n" + $1)
+    return $1 + ["- '6.9'", "- '7'", "- '8'", "- '9'"].join("\n" + $1)
 })
 
 console.log("updating index.js")
