@@ -85,7 +85,21 @@ readdirSyncRec(TEST_ROOT).forEach(file => {
 })
 
 console.log('building source files...')
-require('child_process').spawn('npm', ['run', 'build'])
+var spawnSync = require('child_process').spawnSync
+var spawnSyncCheckRet = function (cmd, args){
+    console.log("RUN %o %o", cmd, args)
+    var res = spawnSync(cmd, args, {stdio: 'inherit'})
+    if (res.status !== 0){
+        console.error("RUN %o %o failed, return code is %o.", cmd, args, res.status)
+        process.exit(res.status)
+    }
+}
+
+spawnSyncCheckRet('npm', ['install', '-d'])
+spawnSyncCheckRet('npm', ['run', 'build'])
+spawnSyncCheckRet('npm', ['run', 'test'])
+spawnSyncCheckRet('git', ['add', '.'])
+spawnSyncCheckRet('git', ['commit', '-m', 'convert to node.js v6'])
 
 
 function replaceInFile(filepath, search, replacement){
