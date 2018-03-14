@@ -9,7 +9,6 @@ module.exports = {
 
 async function tryFStat(file){
     return new Promise(resolve => {
-        debug("tryFStat(%o)", file)
         fs.stat(file, (err, stats) => {
             if (err){
                 resolve(false)

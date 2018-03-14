@@ -28,7 +28,7 @@ function NSPack(config){
     }
 
     this._config = sanitizeConfig(config)
-    this.debugLevel = this._config.debugLevel || 1
+    this.debugLevel = this._config.debugLevel
 
     this._nextModuleId = 1
     this._externalModules = {} // moduleName => module
@@ -95,7 +95,7 @@ extend(NSPack.prototype, {
         await Promise.all(jobs)
     },
     async _buildEntryModule(entryModule){
-        debug(`building entry module "${entryModule.name}"...`)
+        this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name)
 
         const baseDir = this._config.entryBase
         entryModule.entry = {name: entryModule.name, baseDir: baseDir}
@@ -321,7 +321,6 @@ extend(NSPack.prototype, {
         }
     },
     _buildOutputName({type, name, hash}){
-        debug("_buildOutputName(%o)", {type, name, hash})
         const defaultOutputConfig = this._config.output['*']
         const moduleOutputConfig = this._config.output[name] || defaultOutputConfig
         const template = moduleOutputConfig[type] || defaultOutputConfig[type]
@@ -337,28 +336,12 @@ extend(NSPack.prototype, {
 
         const filepath = this._config.resolveOutputFile(outputName)
         const fileDir = path.dirname(filepath)
-        try {
-            const st = await stat(fileDir)
-            if (!st || !st.isDirectory()){
-                throw new Error(`Invalid output path/directory: ${fileDir}`)
-            }
-        } catch (e){
-            debug("stat(%o) failed: %o", fileDir, e)
-            try {
-                await mkdir(fileDir)
-            } catch(e){
-                if (e.code === 'EEXIST'){
-                    // ignore
-                }
-
-                throw e
-            }
-        }
+        await mkdirIfNotExists(fileDir)
 
         return writeFile(filepath, content, 'utf8')
     },
     async _resolveModule(moduleName, baseDir){
-        this._log(`resolveing ${moduleName} in ${baseDir}`)
+        this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
 
         if (moduleName in this._config.externals){
             return this._externalModules[moduleName]
@@ -378,12 +361,12 @@ extend(NSPack.prototype, {
             return
         }
 
-        debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
+        this.debugLevel > 1 && debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
 
         module.dependencies = []
 
         if (!('source' in module)){
-            debug("read module source from file: %o, module: %o", module.fullPathName, module)
+            this.debugLevel > 1 && debug("read module source from file: %o, module: %o", module.fullPathName, module)
             module.source = await readFile(module.fullPathName, "utf8")
         }
 
@@ -444,9 +427,6 @@ extend(NSPack.prototype, {
 
         return await this._nodeModuleResolver.resolveModuleFullPathName(moduleName, baseDir)
     },
-    _log(msg){
-        console.log(msg)
-    },
     async _loadSource(src){
         src = await src
         if (src === undefined){
@@ -460,7 +440,7 @@ extend(NSPack.prototype, {
         if (typeof src === 'object' && src){
             if (src.file && !src.sourceCode){
                 const srcFilePath = this._config.resolveEntryFile(src.file)
-                debug("loadSource: reading file: %o", srcFilePath)
+                this.debugLevel > 1 && debug("loadSource: reading file: %o", srcFilePath)
                 return readFile(srcFilePath, src.encoding || 'utf8')
                         .then(data => ({filePath: srcFilePath, sourceCode: data}))
             } else {
@@ -559,13 +539,14 @@ function sanitizeConfig(config){
 
     r.hashLength = +r.hashLength || 6
 
+    r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0
+
     return r
 }
 
 
 function makeSourceFileReaderFunc(filepath, encoding='utf8'){
     return () => {
-        debug("readFile: %o", filepath)
         return readFile(filepath, encoding)
                  .then(data => ({filePath: filepath, sourceCode: data}))
     }
@@ -635,4 +616,21 @@ module.exports = function (styleCode){
     }
     return styleCode
 }`
+}
+
+async function mkdirIfNotExists(fileDir){
+    try {
+        const st = await stat(fileDir)
+        if (!st || !st.isDirectory()){
+            throw new Error(`Invalid path/directory: ${fileDir}`)
+        }
+    } catch (e){
+        try {
+            await mkdir(fileDir)
+        } catch(e){
+            if (e.code !== 'EEXIST'){
+                throw e
+            }
+        }
+    }
 }

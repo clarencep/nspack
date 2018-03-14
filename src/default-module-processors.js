@@ -6,7 +6,7 @@ const jsVarRegex = /^[a-zA-Z0-9_$]+$/
 module.exports = {
     js: [
         async function (module, packer){
-            debug("process module %o, source: %o", module.fullPathName, module.source)
+            packer.debugLevel > 1 && debug("process module %o, source: %o", module.fullPathName, module.source)
             module.builtType = 'js'
             if (!module.source){
                 module.builtSource = module.source
