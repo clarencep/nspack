@@ -5,8 +5,10 @@ const cb2p = require('./cb2p')
 const babel = require('babel-core')
 const debug = require('debug')('nspack')
 
+
 const defaultModuleProcessors = require('./default-module-processors')
 const NodeModuleResolver = require('./node-module-resolver')
+const NSPackBuiltResult = require('./nspack-built-result')
 
 const {
     tryFStat,
@@ -16,9 +18,6 @@ const {
 const extend = Object.assign
 
 const readFile = cb2p(fs.readFile)
-const writeFile = cb2p(fs.writeFile)
-const stat = cb2p(fs.stat)
-const mkdir = cb2p(fs.mkdir)
 
 module.exports = NSPack
 
@@ -29,12 +28,13 @@ function NSPack(config){
 
     this._config = sanitizeConfig(config)
     this.debugLevel = this._config.debugLevel
+    this._fs = this._config.fs || fs
 
     this._nextModuleId = 1
     this._externalModules = {} // moduleName => module
     this._modules = {} // id => module
     this._modulesByFullPathName = {} // fullPathName => module
-    this._built = {}
+    this._result = new NSPackBuiltResult(this)
     this._nodeModuleResolver = new NodeModuleResolver()
     return this
 }
@@ -52,7 +52,7 @@ extend(NSPack.prototype, {
         this.debugLevel > 1 && this.debugDumpAllModules()
         this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
 
-        return this._built
+        return this._result
     },
     async addModule(module){
         return this._addModuleIfNotExists(module)
@@ -91,7 +91,7 @@ extend(NSPack.prototype, {
             jobs.push(
                 this._buildEntryModule(entryModule)
                     .then(module => {
-                        this._built[entryModule.name] = module
+                        this._result.modules[entryModule.name] = module
                     })
             )
         }
@@ -141,6 +141,7 @@ extend(NSPack.prototype, {
         }
 
         jsModule.outputSource = await this._bundleJsModule(jsModule)
+        jsModule.outputSize = jsModule.outputSource ? jsModule.outputSource.length : 0
         jsModule.hash = this._hash(jsModule.outputSource)
         jsModule.outputName = this._buildOutputName({
             name: entryModule.name,
@@ -149,6 +150,7 @@ extend(NSPack.prototype, {
         })
 
         cssModule.outputSource = this._bundleCssModule(cssModule)
+        cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
         cssModule.hash = this._hash(cssModule.outputSource)
         cssModule.outputName = this._buildOutputName({
             name: entryModule.name,
@@ -164,12 +166,13 @@ extend(NSPack.prototype, {
             html: null,
         }
 
-        const html = await entryModule.html(entryModule)
+        const html = ((await entryModule.html(entryModule)) || '') + ''
         const htmlHash = this._hash(html)
         const htmlOutputName = this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'})
         
         entryModule.bundle.html = {
             outputSource: html,
+            outputSize:   html ? html.length : 0,
             hash:         htmlHash,
             outputName:   htmlOutputName,
         }
@@ -179,6 +182,8 @@ extend(NSPack.prototype, {
             this._outputFile(cssModule.outputName, cssModule.outputSource),
             this._outputFile(htmlOutputName, html),
         ])
+
+        return entryModule
     },
     async _bundleJsModule(jsModule){
         const bundled = newArray(this._nextModuleId)
@@ -338,11 +343,16 @@ extend(NSPack.prototype, {
             return
         }
 
-        const filepath = this._config.resolveOutputFile(outputName)
-        const fileDir = path.dirname(filepath)
-        await mkdirIfNotExists(fileDir)
+        const filePath = this._config.resolveOutputFile(outputName)
+        const fileDir = path.dirname(filePath)
 
-        return writeFile(filepath, content, 'utf8')
+        if (await this._config.hooks.outputFile({outputName, filePath, fileDir, content}) === false){
+            return
+        }
+
+        await this._mkdirIfNotExists(fileDir)
+
+        return this._callFsOpAsync('writeFile', filePath, content, 'utf8')
     },
     async _resolveModule(moduleName, baseDir){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
@@ -469,12 +479,41 @@ extend(NSPack.prototype, {
         debug("Done build. Spent %s(s)", (this.buildSpentTimeMs / 1000).toFixed(3))
 
         for (let entryModule of Object.values(this._config.entry)){
-            debug("%o:", entryModule.name)
-            debug("\t%o: %o", entryModule.bundle.script.outputName, entryModule.bundle.script.hash)
-            debug("\t%o: %o", entryModule.bundle.style.outputName, entryModule.bundle.style.hash)
-            debug("\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash)
+            debug("\t%o:", entryModule.name)
+            debug("\t\t%o: %o", entryModule.bundle.script.outputName, entryModule.bundle.script.hash)
+            debug("\t\t%o: %o", entryModule.bundle.style.outputName, entryModule.bundle.style.hash)
+            debug("\t\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash)
         }
     },
+    _callFsOpAsync(op, ...args){
+        return new Promise((resolve, reject) => {
+            const cb = (err, res) => {
+                if (err) {
+                    reject(err)
+                } else {
+                    resolve(res)
+                }
+            }
+
+            this._fs[op].apply(this._fs, args.concat([cb]))
+        })
+    },
+    async _mkdirIfNotExists(fileDir){
+        try {
+            const st = await this._callFsOpAsync('stat', fileDir)
+            if (!st || !st.isDirectory()){
+                throw new Error(`Invalid path/directory: ${fileDir}`)
+            }
+        } catch (e){
+            try {
+                await this._callFsOpAsync('mkdir', fileDir)
+            } catch(e){
+                if (e.code !== 'EEXIST'){
+                    throw e
+                }
+            }
+        }
+    }
 })
 
 function sanitizeConfig(config){
@@ -544,6 +583,10 @@ function sanitizeConfig(config){
     r.hashLength = +r.hashLength || 6
 
     r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0
+
+    r.hooks = extend(r.hooks || {}, {
+        outputFile: noop,
+    })
 
     return r
 }
@@ -630,19 +673,4 @@ module.exports = function (styleCode){
 }`
 }
 
-async function mkdirIfNotExists(fileDir){
-    try {
-        const st = await stat(fileDir)
-        if (!st || !st.isDirectory()){
-            throw new Error(`Invalid path/directory: ${fileDir}`)
-        }
-    } catch (e){
-        try {
-            await mkdir(fileDir)
-        } catch(e){
-            if (e.code !== 'EEXIST'){
-                throw e
-            }
-        }
-    }
-}
+function noop(){}
