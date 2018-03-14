@@ -17,9 +17,3 @@ Otherwise please install nspack@0.1:
 ```
 npm install --save-dev nspack@0.1
 ```
-
-TODO
-=====
-
-- [] Use `vue-template-compiler` to compile vue file template
-
