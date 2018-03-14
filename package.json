@@ -1,6 +1,6 @@
 {
   "name": "nspack",
-  "version": "9.1.1",
+  "version": "0.1.1",
   "description": "A non-standard pack tool",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "dependencies": {
     "babel": "^6.23.0",
     "babel-core": "^6.26.0",
+    "babel-polyfill": "^6.26.0",
     "debug": "^3.1.0",
     "md5": "^2.2.1"
   },
@@ -27,6 +28,6 @@
     "power-assert": "^1.4.4"
   },
   "engines": {
-    "node": ">=9.3"
+    "node": ">=6.9"
   }
 }

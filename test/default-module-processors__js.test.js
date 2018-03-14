@@ -1,3 +1,4 @@
+var regeneratorRuntime = require("regenerator-runtime");
 // cls && mocha --require ./test/bootloader.js test\default-module-processors__js.test.js
 const path = require('path')
 const assert = require('power-assert')
@@ -6,7 +7,7 @@ const NSPackStub = require('./stubs/nspack-stub')
 const debug = require('debug')('test')
 const extend = Object.assign
 
-const defaultModuleProcessors = require('../src/default-module-processors')
+const defaultModuleProcessors = require('../lib/default-module-processors')
 
 
 const stubModules = {
