@@ -117,7 +117,7 @@ module.exports = {
 
             if (template){
                 module.dependencies.push(template)
-                lines.push(`module.exports = __extend__(component, __require_module__(${template.id}))`)
+                lines.push(`module.exports = {...component, ...__require_module__(${template.id})}`)
             } else {
                 lines.push(`module.exports = component`)
             }

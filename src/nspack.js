@@ -21,6 +21,13 @@ const readFile = cb2p(fs.readFile)
 
 module.exports = NSPack
 
+extend(module.exports, {
+    hooks: {
+        OutputUglifier: require('./nspack-hook-output-uglifier'),
+    },
+})
+
+
 function NSPack(config){
     if (!(this instanceof NSPack)){
         return (new NSPack(config)).build()
@@ -38,6 +45,7 @@ function NSPack(config){
     this._nodeModuleResolver = new NodeModuleResolver()
     return this
 }
+
 
 extend(NSPack.prototype, {
     async build(){
@@ -158,6 +166,9 @@ extend(NSPack.prototype, {
             type: 'css',
         })
 
+        entryModule.jsModule = jsModule
+        entryModule.cssModule = cssModule
+
         entryModule.bundle = {
             script: jsModule,
             scriptsTags: jsModule.outputSource ? `<script src="/${jsModule.outputName}"></script>` : '',
@@ -166,7 +177,7 @@ extend(NSPack.prototype, {
             html: null,
         }
 
-        const html = ((await entryModule.html(entryModule)) || '') + ''
+        const html = await entryModule.html(entryModule)
         const htmlHash = this._hash(html)
         const htmlOutputName = this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'})
         
@@ -345,19 +356,24 @@ extend(NSPack.prototype, {
 
         const filePath = this._config.resolveOutputFile(outputName)
         const fileDir = path.dirname(filePath)
-        const params = {
+        const outputFile = {
+            packer: this,
             entryModule,
             outputName, outputType,
             filePath, fileDir,
             content,
+            async write(options){
+                const t = options ? extend({}, this, options) : this
+                await t.packer._mkdirIfNotExists(t.fileDir)
+                await t.packer._callFsOpAsync('writeFile', t.filePath, t.content, 'utf8')
+            }
         }
 
-        if (await this._config.hooks.outputFile(params) === false){
+        if (await this._applyHook("outputFile", outputFile) === false){
             return
         }
 
-        await this._mkdirIfNotExists(params.fileDir)
-        return this._callFsOpAsync('writeFile', params.filePath, params.content, 'utf8')
+        await outputFile.write()
     },
     async _resolveModule(moduleName, baseDir){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
@@ -518,7 +534,13 @@ extend(NSPack.prototype, {
                 }
             }
         }
-    }
+    },
+    _applyHook(hookName, ...args){
+        const hook = this._config.hooks[hookName]
+        if (hook){
+            return hook.apply(hook, args)
+        }
+    },
 })
 
 function sanitizeConfig(config){
@@ -589,9 +611,9 @@ function sanitizeConfig(config){
 
     r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0
 
-    r.hooks = extend(r.hooks || {}, {
+    r.hooks = extend({
         outputFile: noop,
-    })
+    }, r.hooks || {})
 
     return r
 }
@@ -640,11 +662,6 @@ function __extract_default__(module){
 function __set_esModule_flag__(exports){
     exports.__esModule = true
 }
-
-function __extend__(...args){
-    return Object.assign(...args)
-}
-
 `
 }
 

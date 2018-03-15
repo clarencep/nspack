@@ -5,6 +5,7 @@ module.exports = {
     tryFStat,
     tryReadFileContent,
     tryReadJsonFileContent,
+    humanizeSize,
 }
 
 async function tryFStat(file){
@@ -46,3 +47,8 @@ async function tryReadJsonFileContent(file, encoding='utf8'){
         })
     })
 }
+
+function humanizeSize(sizeInBytes){
+    return (+sizeInBytes / 1000).toFixed(1).replace(/\.0+$/, '') + 'kb'
+}
+
