@@ -17,3 +17,12 @@ Otherwise please install nspack@0.1:
 ```
 npm install --save-dev nspack@0.1
 ```
+
+
+TODO:
+========
+
+- [] less processor
+- [] watch
+- [] hash manifests
+- [] profiling
