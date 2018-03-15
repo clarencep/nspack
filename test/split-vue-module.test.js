@@ -140,6 +140,81 @@ const tests = [
             type: 'css',
         }
     },
+    {
+        testTitle: 'test a vue file with template in template',
+        vueModule: makeTestVueModule({
+            source: `
+<template>
+    <div>
+        Foo bar
+        <template v-if="loading">loading</template>
+    </div>
+</template>
+<script>
+    export default {
+        data(){
+            return {}
+        }
+    }
+</script>`
+        }),
+        expectedTemplate: {
+            source: `
+<div>
+    Foo bar
+    <template v-if="loading">loading</template>
+</div>`,
+            type: 'vue.tpl',
+        },
+        expectedScript: {
+            source: `module.exports = { data(){ return {} } }`,
+            type: 'js',
+        },
+        expectedStyle: undefined,
+    },
+    
+    {
+        testTitle: 'test a vue file with template in template in template',
+        vueModule: makeTestVueModule({
+            source: `
+<template>
+    <my-component>
+        <template slot="header">Foo bar</template>
+        <template>
+            foo bar!
+        </template>
+        <template slot="footer">
+            <template v-if="loading">loading</template>
+        </template>
+    </my-component>
+</template>
+<script>
+    export default {
+        data(){
+            return {}
+        }
+    }
+</script>`
+        }),
+        expectedTemplate: {
+            source: `
+<my-component>
+    <template slot="header">Foo bar</template>
+    <template>
+        foo bar!
+    </template>
+    <template slot="footer">
+        <template v-if="loading">loading</template>
+    </template>
+</my-component>`,
+            type: 'vue.tpl',
+        },
+        expectedScript: {
+            source: `module.exports = { data(){ return {} } }`,
+            type: 'js',
+        },
+        expectedStyle: undefined,
+    },
 ]
 
 describe("Test splitVueModule", function(){
@@ -151,7 +226,7 @@ describe("Test splitVueModule", function(){
             // debug({template, script, style} )
             if (expectedTemplate){
                 assert(template)
-                assert(minify(template.source) === expectedTemplate.source)
+                assert(minify(template.source) === minify(expectedTemplate.source))
                 Object.keys(expectedTemplate)
                       .filter(x => x !== 'source')
                       .forEach(key => {
@@ -163,7 +238,7 @@ describe("Test splitVueModule", function(){
             
             if (expectedScript){
                 assert(script)
-                assert(minify(script.source) === expectedScript.source)
+                assert(minify(script.source) === minify(expectedScript.source))
                 Object.keys(expectedScript)
                       .filter(x => x !== 'source')
                       .forEach(key => {
@@ -175,7 +250,7 @@ describe("Test splitVueModule", function(){
             
             if (expectedStyle){
                 assert(style)
-                assert(minify(style.source) === expectedStyle.source)
+                assert(minify(style.source) === minify(expectedStyle.source))
                 Object.keys(expectedStyle)
                       .filter(x => x !== 'source')
                       .forEach(key => {

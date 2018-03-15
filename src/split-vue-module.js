@@ -83,7 +83,7 @@ function searchTextAroundTag(tagName, source){
     const tagBegin = '<' + tagName
     const tagBeginRe = new RegExp(tagBegin + '(>|\\s)', 'g')
     const tagEnd = '</' + tagName + '>'
-    const tagEndRe = new RegExp(tagEnd, 'g')
+    const tagSearchRe = new RegExp(`(?:${tagBegin}(?:>|\\s))|(?:${tagEnd})`, 'g')
 
     let n = 0
     let m = tagBeginRe.exec(source)
@@ -91,6 +91,9 @@ function searchTextAroundTag(tagName, source){
         return false
     }
 
+    if (/<template /.test(source)){
+        debugger
+    }
 
     let firstTagBeginPos =  m.index
     let contentBeginPos = firstTagBeginPos + m[0].length
@@ -106,10 +109,15 @@ function searchTextAroundTag(tagName, source){
     n++
 
     do {
-        tagEndRe.lastIndex = m.index + m[0].length
-        m = tagEndRe.exec(source)
+        tagSearchRe.lastIndex = m.index + m[0].length
+        m = tagSearchRe.exec(source)
         if (!m) {
             return false
+        }
+
+        if (m[0] !== tagEnd){
+            n++
+            continue;
         }
 
         n--
@@ -120,7 +128,6 @@ function searchTextAroundTag(tagName, source){
                 begin, end,
                 text: source.substring(begin, end)
             }
-
                 
             if (tagName === 'style'){
                 m = source.substring(firstTagBeginPos, contentBeginPos).match(styleLangRe)
@@ -130,12 +137,6 @@ function searchTextAroundTag(tagName, source){
             }
         
             return res
-        }
-
-        tagBeginRe.lastIndex = m.index + m[0].length
-        m = tagBeginRe.exec(source)
-        if (!m){
-            return false
         }
     } while (n > 0)
 
