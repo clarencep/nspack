@@ -91,10 +91,6 @@ function searchTextAroundTag(tagName, source){
         return false
     }
 
-    if (/<template /.test(source)){
-        debugger
-    }
-
     let firstTagBeginPos =  m.index
     let contentBeginPos = firstTagBeginPos + m[0].length
     if (m[0][m[0].length - 1] !== '>'){
