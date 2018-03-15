@@ -6,7 +6,7 @@ const babel = require('babel-core')
 const debug = require('debug')('nspack')
 
 
-const defaultModuleProcessors = require('./default-module-processors')
+const defaultModuleProcessors = require('./nspack-default-processors')
 const NodeModuleResolver = require('./node-module-resolver')
 const NSPackBuiltResult = require('./nspack-built-result')
 
