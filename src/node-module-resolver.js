@@ -102,31 +102,31 @@ extend(NodeModuleResolver.prototype, {
 })
 
 
-NodeModuleResolver.prototype.resolveModuleFullPathName = decorate(NodeModuleResolver.prototype.resolveModuleFullPathName, async function(oldFunc, ...args){
-    debug("!!!!!!!!!!! resolveModuleFullPathName(%o) !!!!!!!!!!!", args)
-    const res = await oldFunc.apply(this, args)
-    debug("!!!!!!!!!!! resolveModuleFullPathName(%o) => %o !!!!!!!!!!!", args, res)
-    return res
-})
+// NodeModuleResolver.prototype.resolveModuleFullPathName = decorate(NodeModuleResolver.prototype.resolveModuleFullPathName, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! resolveModuleFullPathName(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! resolveModuleFullPathName(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
 
-NodeModuleResolver.prototype._tryFile = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
-    debug("!!!!!!!!!!! _tryFile(%o) !!!!!!!!!!!", args)
-    const res = await oldFunc.apply(this, args)
-    debug("!!!!!!!!!!! _tryFile(%o) => %o !!!!!!!!!!!", args, res)
-    return res
-})
+// NodeModuleResolver.prototype._tryFile = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! _tryFile(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _tryFile(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
 
-NodeModuleResolver.prototype._tryFileCached = decorate(NodeModuleResolver.prototype._tryFileCached, async function(oldFunc, ...args){
-    debug("!!!!!!!!!!! _tryFileCached(%o) !!!!!!!!!!!", args)
-    const res = await oldFunc.apply(this, args)
-    debug("!!!!!!!!!!! _tryFileCached(%o) => %o !!!!!!!!!!!", args, res)
-    return res
-})
+// NodeModuleResolver.prototype._tryFileCached = decorate(NodeModuleResolver.prototype._tryFileCached, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! _tryFileCached(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _tryFileCached(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
 
-function decorate(oldFunc, newFunc){
-    return function(...args){
-        return newFunc.call(this, oldFunc, ...args)
-    }
-}
+// function decorate(oldFunc, newFunc){
+//     return function(...args){
+//         return newFunc.call(this, oldFunc, ...args)
+//     }
+// }
 
 
