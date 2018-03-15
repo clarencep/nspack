@@ -704,7 +704,7 @@ module.exports = function (styleCode){
 }
 
 function wrapLibrary({libName, libTarget, amdExecOnDef}, code){
-    console.log("wrapLibray: ", {libName, libTarget, amdExecOnDef})
+    // debug("wrapLibray: ", {libName, libTarget, amdExecOnDef})
     // no library, just return
     if (!libTarget){
         return code
