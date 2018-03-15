@@ -14,7 +14,7 @@ async function tryFStat(file){
             if (err){
                 resolve(false)
             } else {
-                resolve(state)
+                resolve(stats)
             }
         })
     })

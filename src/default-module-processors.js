@@ -6,7 +6,7 @@ const jsVarRegex = /^[a-zA-Z0-9_$]+$/
 module.exports = {
     js: [
         async function (module, packer){
-            packer.debugLevel > 1 && debug("process module %o, source: %o", module.fullPathName, module.source)
+            packer.debugLevel > 1 && debug("process module %o", module.fullPathName)
             module.builtType = 'js'
             if (!module.source){
                 module.builtSource = module.source
@@ -63,6 +63,9 @@ module.exports = {
 
                 lines[i] = line
             }
+
+
+            packer.debugLevel > 1 && debug("process module %o: %o", module.fullPathName, {resolvingModules, resolvingModulesByPlaceholderId})
 
             await Promise.all(Object.values(resolvingModules).map(x => x.resolving))
 

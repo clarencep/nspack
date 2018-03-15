@@ -119,6 +119,9 @@ extend(NSPack.prototype, {
                         baseDir: baseDir,
                         fullPathName: filePath || path.join(baseDir, entryModule.name + '.js'),
                         source: sourceCode,
+                        libName: entryModule.libName === undefined ? entryModule.name.replace(/\\/g, '/') : entryModule.libName,
+                        libTarget: entryModule.libTarget,
+                        amdExecOnDef: entryModule.amdExecOnDef === undefined ? true : !!entryModule.amdExecOnDef,
                     }))
                 .then(module => this._processModule(module))
 
@@ -234,7 +237,9 @@ extend(NSPack.prototype, {
 
         const bundledJsCode = buildJsBundleCode(bundled, jsModule.id)
 
-        return await this._transCompile(bundledJsCode)
+        const transpiledCode = await this._transCompile(bundledJsCode)
+
+        return wrapLibrary(jsModule, transpiledCode)
     },
     _bundleCssModule(cssModule){
         if (cssModule.appendSources && cssModule.appendSources.length > 0){
@@ -325,7 +330,7 @@ extend(NSPack.prototype, {
 
         const res = babel.transform(jsCode, babelConfig)
 
-        return `!(function(){${res.code}})();`
+        return `(function(__nspack__){${res.code};return __nspack__.r})({});`
     },
     async _loadBabelRc(){
         if (this._config.babelrc === false){
@@ -457,7 +462,10 @@ extend(NSPack.prototype, {
     },
     async _resolveModuleFullPathName(moduleName, baseDir) {
         if (moduleName[0] === '@'){
-            return path.join(this._config.entryBase, moduleName.substring(1))
+            return await this._nodeModuleResolver.resolveModuleFullPathName(
+                path.join(this._config.entryBase, moduleName.substring(1)), 
+                ''
+            )
         }
 
         return await this._nodeModuleResolver.resolveModuleFullPathName(moduleName, baseDir)
@@ -641,7 +649,7 @@ function buildJsBundleCode(modules, entryModuleId=0){
     }
 
     return `
-!(function(modules){
+__nspack__.r = (function(modules){
     var required = {};
     var require = function(moduleId){
         var m = required[moduleId];
@@ -652,7 +660,7 @@ function buildJsBundleCode(modules, entryModuleId=0){
     
         return m.exports;
     };
-    require(${entryModuleId});
+    return require(${entryModuleId});
 })([${modulesCodes.join("")}]);
 
 function __extract_default__(module){
@@ -693,6 +701,84 @@ module.exports = function (styleCode){
     }
     return styleCode
 }`
+}
+
+function wrapLibrary({libName, libTarget, amdExecOnDef}, code){
+    console.log("wrapLibray: ", {libName, libTarget, amdExecOnDef})
+    // no library, just return
+    if (!libTarget){
+        return code
+    }
+
+    if (libTarget === 'amd') {
+        if (libName){
+            if (!amdExecOnDef){
+                return `
+define(${JSON.stringify(libName)}, [], function(){
+    return ${code}
+})
+`
+            } else {
+            return `
+(function(f,u){
+    var m,e;
+    try{m = f()}catch(x){e=x}; 
+    define(${JSON.stringify(libName)}, [], function(){if(e !== u){throw e} return m})
+    if(e !== u){throw e}
+})(function(){
+    return ${code}
+})
+`
+            }
+        } else {
+            return 
+            return `
+define([], function(){
+    return ${code}
+})
+`
+        }
+    } else if (libTarget === 'umd') {
+        if (libName){
+            return `
+(function (root, moduleName, moduleDef, undefined) {
+    if (typeof exports === 'object' && typeof module === 'object')
+        module.exports = moduleDef()
+    else if (typeof define === 'function' && define.amd)
+        ${amdExecOnDef 
+            ? '{var m, e; try{m = moduleDef()}catch(x){e=x} define(moduleName, [], function(){if(e !== undefined){throw e} return m})} if(e !== undefined){throw e}' 
+            : 'define(moduleName, [], moduleDef)'}
+    else if (typeof exports === 'object')
+        exports[moduleName] = moduleDef()
+    else
+        root[moduleName] = moduleDef()
+})(this, ${JSON.stringify(libName)}, function(){
+    return ${code}
+})
+`
+        } else {
+            return `
+(function (root, moduleDef, undefined) {
+    if (typeof exports === 'object' && typeof module === 'object')
+        module.exports = moduleDef()
+    else if (typeof define === 'function' && define.amd)
+        ${amdExecOnDef 
+            ? '{var m, e; try{m = moduleDef()}catch(x){e=x}; define([], function(){if(e !== undefined){throw e} return m})} if(e !== undefined){throw e}' 
+            : 'define([], moduleDef)'}
+    else if (typeof exports === 'object')
+        exports['return'] = moduleDef()
+    else
+        root.returnExports = moduleDef()
+})(this, ${JSON.stringify(libName)}, function(){
+    return ${code}
+})
+`
+        }
+    } else if (libTarget === 'commonjs') {
+        return 'module.exports = ' + code
+    } else {
+        throw new Error(`Unknown libTarget(${libTarget}) when processing ${libName}`)
+    }
 }
 
 function noop(){}

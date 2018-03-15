@@ -51,7 +51,7 @@ function getDefaultConfig(){
                                 reduceIdents: false, // if reduceIdents is true, keyframes' names will be minfied. I don't like that.
                             })
                         ])
-                        .process(code)
+                        .process(code, {from:undefined, to:undefined})
                         .then(res => {
                             return {
                                 code: res.css,

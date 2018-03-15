@@ -27,10 +27,14 @@ function NodeModuleResolver(){
 extend(NodeModuleResolver.prototype, {
     async resolveModuleFullPathName(moduleName, baseDir){
         if (moduleName[0] === '.'){
-            return path.join(baseDir, moduleName)
+            return await this._tryFileCached(path.join(baseDir, moduleName))
         }
 
         return this._remember('module:' + moduleName + '@' + baseDir, async () => {
+            if (!baseDir){
+                return await this._tryFileCached(moduleName)
+            }
+
             let baseDirParts = baseDir.split(path.sep)
 
             // try read node modules
@@ -42,6 +46,12 @@ extend(NodeModuleResolver.prototype, {
             }
         })
     },
+    resetCache(){
+        this._cache = {}
+    },
+    // _remember(cacheKey, loadFunc){
+    //     return loadFunc()
+    // },
     async _remember(cacheKey, loadFunc){
         if (cacheKey in this._cache){
             return this._cache[cacheKey]
@@ -55,7 +65,6 @@ extend(NodeModuleResolver.prototype, {
     async _tryFile(filepath){
         let fileIsDir = false
 
-        // try directly the file
         const r = await tryFStat(filepath)
         if (r){
             if (r.isFile()){
@@ -66,7 +75,7 @@ extend(NodeModuleResolver.prototype, {
         }
 
         // try jquery => jquery.js
-        jsFile = filepath + '.js'
+        const jsFile = filepath + '.js'
         const r2 = await tryFStat(jsFile)
         if (r2 && r2.isFile()){
             return jsFile
@@ -91,3 +100,33 @@ extend(NodeModuleResolver.prototype, {
         return false;
     }
 })
+
+
+NodeModuleResolver.prototype.resolveModuleFullPathName = decorate(NodeModuleResolver.prototype.resolveModuleFullPathName, async function(oldFunc, ...args){
+    debug("!!!!!!!!!!! resolveModuleFullPathName(%o) !!!!!!!!!!!", args)
+    const res = await oldFunc.apply(this, args)
+    debug("!!!!!!!!!!! resolveModuleFullPathName(%o) => %o !!!!!!!!!!!", args, res)
+    return res
+})
+
+NodeModuleResolver.prototype._tryFile = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
+    debug("!!!!!!!!!!! _tryFile(%o) !!!!!!!!!!!", args)
+    const res = await oldFunc.apply(this, args)
+    debug("!!!!!!!!!!! _tryFile(%o) => %o !!!!!!!!!!!", args, res)
+    return res
+})
+
+NodeModuleResolver.prototype._tryFileCached = decorate(NodeModuleResolver.prototype._tryFileCached, async function(oldFunc, ...args){
+    debug("!!!!!!!!!!! _tryFileCached(%o) !!!!!!!!!!!", args)
+    const res = await oldFunc.apply(this, args)
+    debug("!!!!!!!!!!! _tryFileCached(%o) => %o !!!!!!!!!!!", args, res)
+    return res
+})
+
+function decorate(oldFunc, newFunc){
+    return function(...args){
+        return newFunc.call(this, oldFunc, ...args)
+    }
+}
+
+
