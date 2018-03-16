@@ -1,5 +1,6 @@
 const fs = require('fs')
 const debug = require('debug')('nspack')
+const cb2p = require('./cb2p')
 
 module.exports = {
     tryFStat,
@@ -7,6 +8,7 @@ module.exports = {
     tryReadJsonFileContent,
     humanizeSize,
     sleep,
+    readFile: cb2p(fs.readFile),
 }
 
 async function tryFStat(file){

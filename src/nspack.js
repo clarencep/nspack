@@ -7,18 +7,21 @@ const debug = require('debug')('nspack')
 
 
 const defaultModuleProcessors = require('./nspack-default-processors')
+
 const NodeModuleResolver = require('./node-module-resolver')
 const NSPackBuiltResult = require('./nspack-built-result')
+const NSPackModule = require('./nspack-module')
+const NSPackEntryModule = require('./nspack-entry-module')
 
 const {
     sleep,
     tryFStat,
     tryReadJsonFileContent,
+    readFile,
 } = require('./utils')
 
 const extend = Object.assign
 
-const readFile = cb2p(fs.readFile)
 
 module.exports = NSPack
 
@@ -38,6 +41,7 @@ function NSPack(config){
     this.debugLevel = this._config.debugLevel
     this._fs = this._config.fs || fs
 
+    this._builtTimes = 0
     this._nextModuleId = 1
     this._externalModules = {} // moduleName => module
     this._modules = {} // id => module
@@ -55,6 +59,11 @@ extend(NSPack.prototype, {
         }
 
         try {
+            if (this._builtTimes > 0){
+                await this._checkModulesUpdates()
+            }
+
+            this._builtTimes++
             this._isBuilding = true
             this.buildBeginAt = new Date()
 
@@ -123,18 +132,13 @@ extend(NSPack.prototype, {
         await Promise.all(jobs)
     },
     async _buildFromEntries(){
-        const jobs = []
-        const entryModules = Object.values(this._config.entry)
-        for (let entryModule of entryModules){
-            jobs.push(
-                this._buildEntryModule(entryModule)
-                    .then(module => {
-                        this._result.modules[entryModule.name] = module
-                    })
-            )
-        }
-
-        await Promise.all(jobs)
+        await Promise.all(
+            Object.values(this._config.entry)
+                  .map(module => this._buildEntryModule(module)
+                                     .then(module => {
+                                         this._result.modules[entryModule.name] = module
+                                     }))
+        )
     },
     async _buildEntryModule(entryModule){
         this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name)
@@ -427,23 +431,14 @@ extend(NSPack.prototype, {
         return module
     },
     async _processModule(module){
-        if (module.processed){
+        if (module.processed && !module.needUpdate){
             return
         }
 
         this.debugLevel > 1 && debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
 
-        module.dependencies = []
+        await module.loadSource()
 
-        if (!('source' in module)){
-            this.debugLevel > 1 && debug("read module source from file: %o, module: %o", module.fullPathName, module)
-            module.source = await readFile(module.fullPathName, "utf8")
-        }
-
-        if (!('fullFileDirName' in module)){
-            module.fullFileDirName = path.dirname(module.fullPathName)
-        }
-        
         const processors = this._config.moduleProcessors[module.type]
         if (processors){
             for (let processor of processors){
@@ -453,6 +448,7 @@ extend(NSPack.prototype, {
             throw new Error(`No processor for ${module.type} when processing file ${module.fullPathName}`)
         }
 
+        module.needUpdate = false
         return module
     },
     async _addModuleIfNotExists(module){
@@ -475,16 +471,9 @@ extend(NSPack.prototype, {
             return this._modulesByFullPathName[module.fullPathName]
         }
 
-        if (!('relativePath' in module)){
-            module.relativePath = path.relative(this._config.entryBase, module.fullPathName)
-        }
-
-        if (!('type' in module)){
-            module.type = path.extname(module.fullPathName).replace(/^./, '').toLowerCase()
-        }
-
-
+        module = new NSPackModule(module, this)
         module.id = this._nextModuleId++
+
         this._modules[module.id] = module
         this._modulesByFullPathName[module.fullPathName] = module
 
@@ -579,6 +568,16 @@ extend(NSPack.prototype, {
             return hook.apply(hook, args)
         }
     },
+    async _checkModulesUpdates(){
+        await Promise.all(
+            Object.values(this._modules)
+                  .map(m => m._checkIfNeedUpdate0())
+        )
+        
+        for (let m of Object.values(this._config.entry)){
+            m._checkIfNeedUpdate1()
+        }
+    }
 })
 
 function sanitizeConfig(config){
@@ -592,7 +591,7 @@ function sanitizeConfig(config){
 
     r.entry = {...config.entry}
     for (let entryName of Object.keys(r.entry)){
-        const entry = r.entry[entryName] = {name: entryName}
+        const entry = r.entry[entryName] = new NSPackEntryModule({name: entryName})
         const entryConfigType = typeof config.entry[entryName]
         if (entryConfigType === 'string'){
             entry.js = config.entry[entryName]
