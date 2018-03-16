@@ -13,7 +13,7 @@ module.exports = async function (module, packer){
 
     if (script){
         module.dependencies.push(script)
-        lines.push(`const component = __require_module__(${script.id})`)
+        lines.push(`const component = __extract_default__(__require_module__(${script.id}))`)
     } else {
         lines.push(`const component = {}`)
     }
