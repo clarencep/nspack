@@ -86,7 +86,7 @@ extend(NSPack.prototype, {
             }
 
             const spentTimeMs = Date.now() - beginTime
-            await sleep(Math.max(1, this.config.watchInterval - spentTimeMs))
+            await sleep(Math.max(1, this._config.watchInterval - spentTimeMs))
         }
     },
     async incrementBuild(){
