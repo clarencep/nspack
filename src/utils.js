@@ -6,6 +6,7 @@ module.exports = {
     tryReadFileContent,
     tryReadJsonFileContent,
     humanizeSize,
+    sleep,
 }
 
 async function tryFStat(file){
@@ -52,3 +53,6 @@ function humanizeSize(sizeInBytes){
     return (+sizeInBytes / 1000).toFixed(1).replace(/\.0+$/, '') + 'kb'
 }
 
+function sleep(timeout){
+    return new Promise(resolve => setTimeout(resolve, timeout))
+}

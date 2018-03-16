@@ -11,6 +11,7 @@ const NodeModuleResolver = require('./node-module-resolver')
 const NSPackBuiltResult = require('./nspack-built-result')
 
 const {
+    sleep,
     tryFStat,
     tryReadJsonFileContent,
 } = require('./utils')
@@ -49,18 +50,47 @@ function NSPack(config){
 
 extend(NSPack.prototype, {
     async build(){
-        this.buildBeginAt = new Date()
+        if (this._isBuilding){
+            throw new Error(`The building process already started!`)
+        }
 
-        await this._resolveExternalModules()
-        await this._buildFromEntries()
+        try {
+            this._isBuilding = true
+            this.buildBeginAt = new Date()
 
-        this.buildEndAt = new Date()
-        this.buildSpentTimeMs = +this.buildEndAt - (+this.buildBeginAt)
+            await this._resolveExternalModules()
+            await this._buildFromEntries()
 
-        this.debugLevel > 1 && this.debugDumpAllModules()
-        this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
+            this.buildEndAt = new Date()
+            this.buildSpentTimeMs = +this.buildEndAt - (+this.buildBeginAt)
 
-        return this._result
+            this.debugLevel > 1 && this.debugDumpAllModules()
+            this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
+
+            return this._result
+        } finally{
+            this._isBuilding = false
+        }
+    },
+    async watch(doneCb=noop, beginBuildCb=noop){
+        for(;;){
+            const beginTime = Date.now()
+
+            try {
+                await beginBuildCb(this)
+
+                const res = await this.incrementBuild()
+                await doneCb(null, res)
+            } catch (e){
+                await doneCb(e, null)
+            }
+
+            const spentTimeMs = Date.now() - beginTime
+            await sleep(Math.max(1, this.config.watchInterval - spentTimeMs))
+        }
+    },
+    async incrementBuild(){
+        return this.build()
     },
     async addModule(module){
         return this._addModuleIfNotExists(module)
@@ -622,6 +652,8 @@ function sanitizeConfig(config){
     r.hooks = extend({
         outputFile: noop,
     }, r.hooks || {})
+
+    r.watchInterval = +r.watchInterval || 500
 
     return r
 }
