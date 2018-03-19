@@ -6,9 +6,13 @@ module.exports = class NSPackBuiltResult{
         this.modules = {}
     }
 
+    spentTimeSeconds(){
+        return (this.packer.buildSpentTimeMs / 1000).toFixed(3)
+    }
+
     summary(){
         const r = []
-        r.push(`Done build. Spent ${(this.packer.buildSpentTimeMs / 1000).toFixed(3)}(s)`)
+        r.push(`Done build. Spent ${this.spentTimeSeconds()}(s)`)
 
         for (let module of Object.values(this.modules)){
             r.push("    " + module.name + ":")

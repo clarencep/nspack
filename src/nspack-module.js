@@ -46,6 +46,7 @@ module.exports = class NSPackModule {
         if (!this.isInternal && !this.isExternal){
             const stat = await tryFStat(this.fullPathName)
             if (!stat || !stat.isFile() || +stat.mtimeMs > this.sourceUpdatedAt){
+                this.packer.debugLevel > 3 && debug("source updated: %o, at %o", this.fullPathName, stat)
                 return this.needUpdate = true
             }
         }

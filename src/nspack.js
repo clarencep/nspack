@@ -66,11 +66,13 @@ extend(NSPack.prototype, {
                 const hasUpdated = await this._checkModulesUpdates()
                 if (!hasUpdated){
                     this.debugLevel > 3 && debug("modules not updated, so don't build")
+                    this._result = new NSPackBuiltResult(this)
                     this._result.updated = false
                     return this._result
                 }
 
                 this.debugLevel > 3 && debug("modules updated, so do build")
+                this._result = new NSPackBuiltResult(this)
             }
 
             this._builtTimes++
@@ -154,6 +156,11 @@ extend(NSPack.prototype, {
         )
     },
     async _buildEntryModule(entryModule){
+        if (entryModule.processed && !entryModule.needUpdate){
+            this.debugLevel > 0 && debug(`ignore entry module %o (processed or don't need update.)`, entryModule.name)
+            return entryModule
+        }
+
         this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name)
 
         const baseDir = this._config.entryBase
@@ -169,6 +176,7 @@ extend(NSPack.prototype, {
                         libName: entryModule.libName === undefined ? entryModule.name.replace(/\\/g, '/') : entryModule.libName,
                         libTarget: entryModule.libTarget,
                         amdExecOnDef: entryModule.amdExecOnDef === undefined ? true : !!entryModule.amdExecOnDef,
+                        isInternal: !filePath || (!sourceCode && sourceCode !== ''),
                     }))
                 .then(module => this._processModule(module))
 
@@ -187,11 +195,16 @@ extend(NSPack.prototype, {
                         baseDir: baseDir,
                         fullPathName: filePath || path.join(baseDir, entryModule.name + '.css'),
                         source: sourceCode,
-                        isInternal: !sourceCode && sourceCode !== '',
+                        isInternal: !filePath || (!sourceCode && sourceCode !== ''),
                     }))
                 .then(module => this._processModule(module))
 
         const [jsModule, cssModule] = await Promise.all([resolvingJsModule, resolvingCssModule])
+
+        // debug:
+        if (entryModule.name === 'about'){
+            console.log('=============about: ', entryModule)
+        }
 
         if (entryModule.extractCssFromJs){
             this._extractCssFromJs(jsModule, cssModule)
@@ -199,7 +212,7 @@ extend(NSPack.prototype, {
             this._transformCssInJs(jsModule)
         }
 
-        jsModule.valid = jsModule.source || jsModule.source === ''
+        jsModule.valid = !!(jsModule.source || jsModule.source === '')
         jsModule.outputSource = jsModule.valid ? await this._bundleJsModule(jsModule) : undefined
         jsModule.outputSize = jsModule.outputSource ? jsModule.outputSource.length : 0
         jsModule.hash = jsModule.valid ? this._hash(jsModule.outputSource) : ''
@@ -209,7 +222,7 @@ extend(NSPack.prototype, {
             type: 'js',
         }) : ''
 
-        cssModule.valid = cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0)
+        cssModule.valid = !!(cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0))
         cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule) : undefined
         cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
         cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : ''
@@ -231,7 +244,7 @@ extend(NSPack.prototype, {
         }
 
         const html = await entryModule.html(entryModule)
-        const htmlValid = html || html === ''
+        const htmlValid = !!(html || html === '')
         const htmlHash = htmlValid ? this._hash(html) : ''
         const htmlOutputName = htmlValid ? this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'}) : ''
         
@@ -249,6 +262,7 @@ extend(NSPack.prototype, {
             this._outputFile(htmlOutputName, html, entryModule, 'html'),
         ])
 
+        entryModule.processed = true
         return entryModule
     },
     async _bundleJsModule(jsModule){
@@ -450,23 +464,34 @@ extend(NSPack.prototype, {
     },
     async _processModule(module){
         if (module.processed && !module.needUpdate){
+            this.debugLevel > 3 && debug("ignore module %o in %o (processed and do not need update)", module.name, module.baseDir || module.fullFileDirName)
             return
         }
 
-        this.debugLevel > 1 && debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
-
-        await module.loadSource()
-
-        const processors = this._config.moduleProcessors[module.type]
-        if (processors){
-            for (let processor of processors){
-                await processor.call(processor, module, this)
-            }
-        } else {
-            throw new Error(`No processor for ${module.type} when processing file ${module.fullPathName}`)
+        if (module.processing){
+            return module.processing
         }
 
-        module.needUpdate = false
+        const processing = module.processing = (async () => {
+            this.debugLevel > 1 && debug("processing module %o in %o", module.name, module.baseDir || module.fullFileDirName)
+    
+            await module.loadSource()
+    
+            const processors = this._config.moduleProcessors[module.type]
+            if (processors){
+                for (let processor of processors){
+                    await processor.call(processor, module, this)
+                }
+            } else {
+                throw new Error(`No processor for ${module.type} when processing file ${module.fullPathName}`)
+            }
+    
+            module.needUpdate = false
+            return module
+        })()
+
+        await processing
+        module.processing = false
         return module
     },
     async _addModuleIfNotExists(module){

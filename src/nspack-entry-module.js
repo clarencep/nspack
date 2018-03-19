@@ -1,9 +1,13 @@
 const extend = Object.assign
 module.exports = class NSPackEntryModule{
     constructor(attributes, packer){
-        this.packer = packer
+        this._packer = () => packer
         attributes && extend(this, attributes)
 
+    }
+
+    get packer(){
+        return this._packer()
     }
 
     _checkIfNeedUpdate0(){
@@ -13,7 +17,7 @@ module.exports = class NSPackEntryModule{
     _checkIfNeedUpdate1(){
         const jsNeedUpdates = this.jsModule._checkIfNeedUpdate1()
         const cssNeedUpdates = this.cssModule._checkIfNeedUpdate1()
-        return jsNeedUpdates || cssNeedUpdates
+        return this.needUpdate = (jsNeedUpdates || cssNeedUpdates)
     }
 
 
