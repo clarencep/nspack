@@ -6,10 +6,14 @@ module.exports = class NSPackEntryModule{
 
     }
 
+    _checkIfNeedUpdate0(){
+        // entry module need not this method
+    }
+
     _checkIfNeedUpdate1(){
-        this.jsModule._checkIfNeedUpdate1()
-        this.cssModule._checkIfNeedUpdate1()
-        this.htmlModule._checkIfNeedUpdate1()
+        const jsNeedUpdates = this.jsModule._checkIfNeedUpdate1()
+        const cssNeedUpdates = this.cssModule._checkIfNeedUpdate1()
+        return jsNeedUpdates || cssNeedUpdates
     }
 
 

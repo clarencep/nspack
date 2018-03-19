@@ -12,8 +12,14 @@ module.exports = class NSPackBuiltResult{
 
         for (let module of Object.values(this.modules)){
             r.push("    " + module.name + ":")
+
+            module.bundle.script.valid && 
             r.push("        " + module.bundle.script.outputName + ": \t" + humanizeSize(module.bundle.script.outputSize) + "\t" + module.bundle.script.hash.substring(0,4))
+
+            module.bundle.style.valid && 
             r.push("        " + module.bundle.style.outputName + ": \t" + humanizeSize(module.bundle.style.outputSize) + "\t" + module.bundle.style.hash.substring(0,4))
+
+            module.bundle.html.valid &&
             r.push("        " + module.bundle.html.outputName + ": \t" + humanizeSize(module.bundle.html.outputSize) + "\t" + module.bundle.html.hash.substring(0,4))
         }
 

@@ -6,7 +6,7 @@ const {tryFStat, readFile,} = require('./utils')
 
 module.exports = class NSPackModule {
     constructor(attributes, packer){
-        this.packer = packer
+        this._packer = () => packer
         attributes && extend(this, attributes)
 
         if (this.relativePath === undefined){
@@ -27,8 +27,12 @@ module.exports = class NSPackModule {
         this.dependencies = []
     }
 
+    get packer(){
+        return this._packer()
+    }
+
     async loadSource(){
-        if (this.source === undefined){
+        if (this.source === undefined && !this.isExternal && !this.isInternal){
             this.packer.debugLevel > 1 && debug("read module source from file: %o, module: %o", this.fullPathName, this)
 
             const readFileAt = Date.now()

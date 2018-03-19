@@ -37,7 +37,7 @@ function NSPack(config){
         return (new NSPack(config)).build()
     }
 
-    this._config = sanitizeConfig(config)
+    this._config = sanitizeConfig.call(this, config)
     this.debugLevel = this._config.debugLevel
     this._fs = this._config.fs || fs
 
@@ -59,26 +59,39 @@ extend(NSPack.prototype, {
         }
 
         try {
+            this._isBuilding = true
+
             if (this._builtTimes > 0){
-                await this._checkModulesUpdates()
+                this.debugLevel > 3 && debug("checking if module updated")
+                const hasUpdated = await this._checkModulesUpdates()
+                if (!hasUpdated){
+                    this.debugLevel > 3 && debug("modules not updated, so don't build")
+                    this._result.updated = false
+                    return this._result
+                }
+
+                this.debugLevel > 3 && debug("modules updated, so do build")
             }
 
             this._builtTimes++
-            this._isBuilding = true
             this.buildBeginAt = new Date()
 
             await this._resolveExternalModules()
             await this._buildFromEntries()
 
+            this._result.updated = true
             this.buildEndAt = new Date()
             this.buildSpentTimeMs = +this.buildEndAt - (+this.buildBeginAt)
 
             this.debugLevel > 1 && this.debugDumpAllModules()
             this.debugLevel > 0 && this.debugDumpAllEntriesOutputs()
 
-            return this._result
-        } finally{
             this._isBuilding = false
+            return this._result
+        } catch (e){
+            this._isBuilding = false
+            console.error(e)
+            throw e
         }
     },
     async watch(doneCb=noop, beginBuildCb=noop){
@@ -136,7 +149,7 @@ extend(NSPack.prototype, {
             Object.values(this._config.entry)
                   .map(module => this._buildEntryModule(module)
                                      .then(module => {
-                                         this._result.modules[entryModule.name] = module
+                                         this._result.modules[module.name] = module
                                      }))
         )
     },
@@ -174,6 +187,7 @@ extend(NSPack.prototype, {
                         baseDir: baseDir,
                         fullPathName: filePath || path.join(baseDir, entryModule.name + '.css'),
                         source: sourceCode,
+                        isInternal: !sourceCode && sourceCode !== '',
                     }))
                 .then(module => this._processModule(module))
 
@@ -185,23 +199,25 @@ extend(NSPack.prototype, {
             this._transformCssInJs(jsModule)
         }
 
-        jsModule.outputSource = await this._bundleJsModule(jsModule)
+        jsModule.valid = jsModule.source || jsModule.source === ''
+        jsModule.outputSource = jsModule.valid ? await this._bundleJsModule(jsModule) : undefined
         jsModule.outputSize = jsModule.outputSource ? jsModule.outputSource.length : 0
-        jsModule.hash = this._hash(jsModule.outputSource)
-        jsModule.outputName = this._buildOutputName({
+        jsModule.hash = jsModule.valid ? this._hash(jsModule.outputSource) : ''
+        jsModule.outputName = jsModule.valid ? this._buildOutputName({
             name: entryModule.name,
             hash: jsModule.hash,
             type: 'js',
-        })
+        }) : ''
 
-        cssModule.outputSource = this._bundleCssModule(cssModule)
+        cssModule.valid = cssModule.source || cssModule.source === ''
+        cssModule.outputSource = cssModule.valid ? await this._bundleCssModule(cssModule) : undefined
         cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
-        cssModule.hash = this._hash(cssModule.outputSource)
-        cssModule.outputName = this._buildOutputName({
+        cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : ''
+        cssModule.outputName = cssModule.valid ? this._buildOutputName({
             name: entryModule.name,
             hash: cssModule.hash,
             type: 'css',
-        })
+        }) : ''
 
         entryModule.jsModule = jsModule
         entryModule.cssModule = cssModule
@@ -215,10 +231,12 @@ extend(NSPack.prototype, {
         }
 
         const html = await entryModule.html(entryModule)
-        const htmlHash = this._hash(html)
-        const htmlOutputName = this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'})
+        const htmlValid = html || html === ''
+        const htmlHash = htmlValid ? this._hash(html) : ''
+        const htmlOutputName = htmlValid ? this._buildOutputName({name: entryModule.name, hash: htmlHash, type: 'html'}) : ''
         
         entryModule.bundle.html = {
+            valid:        htmlValid,
             outputSource: html,
             outputSize:   html ? html.length : 0,
             hash:         htmlHash,
@@ -341,7 +359,7 @@ extend(NSPack.prototype, {
             return this._modulesByFullPathName[moduleFile]
         }
 
-        const module = {
+        const module = new NSPackModule({
             id: this._nextModuleId++,
             name: moduleName,
             file: moduleFile,
@@ -353,7 +371,7 @@ extend(NSPack.prototype, {
             builtSource: getModuleSource(),
             isInternal: true,
             processed: true,
-        }
+        }, this)
 
         this._modules[module.id] = module
         this._modulesByFullPathName[moduleFile] = module
@@ -574,12 +592,20 @@ extend(NSPack.prototype, {
                   .map(m => m._checkIfNeedUpdate0())
         )
         
+        let hasOneUpdated = false
         for (let m of Object.values(this._config.entry)){
-            m._checkIfNeedUpdate1()
+            hasOneUpdated = hasOneUpdated || m._checkIfNeedUpdate1()
         }
+
+        return hasOneUpdated
     }
 })
 
+/**
+ * 
+ * @param {*} config 
+ * @this NSPack
+ */
 function sanitizeConfig(config){
     const r = {...config}
 
@@ -591,7 +617,7 @@ function sanitizeConfig(config){
 
     r.entry = {...config.entry}
     for (let entryName of Object.keys(r.entry)){
-        const entry = r.entry[entryName] = new NSPackEntryModule({name: entryName})
+        const entry = r.entry[entryName] = new NSPackEntryModule({name: entryName}, this)
         const entryConfigType = typeof config.entry[entryName]
         if (entryConfigType === 'string'){
             entry.js = config.entry[entryName]
