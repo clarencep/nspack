@@ -209,8 +209,8 @@ extend(NSPack.prototype, {
             type: 'js',
         }) : ''
 
-        cssModule.valid = cssModule.source || cssModule.source === ''
-        cssModule.outputSource = cssModule.valid ? await this._bundleCssModule(cssModule) : undefined
+        cssModule.valid = cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0)
+        cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule) : undefined
         cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
         cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : ''
         cssModule.outputName = cssModule.valid ? this._buildOutputName({
