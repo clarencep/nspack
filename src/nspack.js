@@ -62,16 +62,17 @@ extend(NSPack.prototype, {
             this._isBuilding = true
 
             if (this._builtTimes > 0){
-                this.debugLevel > 3 && debug("checking if module updated")
+                this.debugLevel > 10 && debug("checking if module updated")
                 const hasUpdated = await this._checkModulesUpdates()
                 if (!hasUpdated){
-                    this.debugLevel > 3 && debug("modules not updated, so don't build")
+                    this.debugLevel > 10 && debug("modules not updated, so don't build")
                     this._result = new NSPackBuiltResult(this)
                     this._result.updated = false
+                    this._isBuilding = false
                     return this._result
                 }
 
-                this.debugLevel > 3 && debug("modules updated, so do build")
+                this.debugLevel > 10 && debug("modules updated, so do build")
                 this._result = new NSPackBuiltResult(this)
             }
 
@@ -94,17 +95,34 @@ extend(NSPack.prototype, {
             this._isBuilding = false
             console.error(e)
             throw e
+        } finally {
+            this._isBuilding = false
         }
     },
     async watch(doneCb=noop, beginBuildCb=noop){
+        let lastUpdated, res
+
         for(;;){
             const beginTime = Date.now()
 
             try {
-                await beginBuildCb(this)
+                if (lastUpdated || !res){
+                    if (!res){
+                        this.debugLevel > 1 && debug("begin first nspack...")
+                    } else {
+                        this.debugLevel > 1 && debug("watching for changes...")
+                    }
 
-                const res = await this.incrementBuild()
-                await doneCb(null, res)
+                    await beginBuildCb(this)
+                }
+
+                lastUpdated = false
+                res = await this.incrementBuild()
+                
+                lastUpdated = (res.buildTimes <= 1 || res.updated)
+                if (lastUpdated){
+                    await doneCb(null, res)
+                }
             } catch (e){
                 await doneCb(e, null)
             }
@@ -119,6 +137,14 @@ extend(NSPack.prototype, {
     async addModule(module){
         return this._addModuleIfNotExists(module)
                    .then(m => this._processModule(m))
+    },
+    async addOrUpdateModule(module){
+        const m = await this._addModuleIfNotExists(module)
+        if (!m.fresh){
+            extend(m, module)
+        }
+
+        return this._processModule(m)
     },
     async _resolveExternalModules(){
         const externalModules = this._config.externals
@@ -149,18 +175,16 @@ extend(NSPack.prototype, {
     async _buildFromEntries(){
         await Promise.all(
             Object.values(this._config.entry)
+                  .filter(x => !x.processed || x.needUpdate)
                   .map(module => this._buildEntryModule(module)
                                      .then(module => {
-                                         this._result.modules[module.name] = module
+                                        module.processed = true
+                                        module.needUpdate = false
+                                        this._result.modules[module.name] = module
                                      }))
         )
     },
     async _buildEntryModule(entryModule){
-        if (entryModule.processed && !entryModule.needUpdate){
-            this.debugLevel > 0 && debug(`ignore entry module %o (processed or don't need update.)`, entryModule.name)
-            return entryModule
-        }
-
         this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name)
 
         const baseDir = this._config.entryBase
@@ -201,10 +225,10 @@ extend(NSPack.prototype, {
 
         const [jsModule, cssModule] = await Promise.all([resolvingJsModule, resolvingCssModule])
 
-        // debug:
-        if (entryModule.name === 'about'){
-            console.log('=============about: ', entryModule)
-        }
+        // // debug:
+        // if (entryModule.name === 'about'){
+        //     console.log('=============about: ', entryModule)
+        // }
 
         if (entryModule.extractCssFromJs){
             this._extractCssFromJs(jsModule, cssModule)
@@ -465,7 +489,7 @@ extend(NSPack.prototype, {
     async _processModule(module){
         if (module.processed && !module.needUpdate){
             this.debugLevel > 3 && debug("ignore module %o in %o (processed and do not need update)", module.name, module.baseDir || module.fullFileDirName)
-            return
+            return module
         }
 
         if (module.processing){
@@ -486,6 +510,7 @@ extend(NSPack.prototype, {
                 throw new Error(`No processor for ${module.type} when processing file ${module.fullPathName}`)
             }
     
+            module.processed = true
             module.needUpdate = false
             return module
         })()
@@ -511,10 +536,12 @@ extend(NSPack.prototype, {
         }
 
         if (module.fullPathName in this._modulesByFullPathName){
+            this._modulesByFullPathName[module.fullPathName].fresh = false
             return this._modulesByFullPathName[module.fullPathName]
         }
 
         module = new NSPackModule(module, this)
+        module.fresh = true
         module.id = this._nextModuleId++
 
         this._modules[module.id] = module

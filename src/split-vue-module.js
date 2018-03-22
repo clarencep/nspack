@@ -16,7 +16,7 @@ module.exports = async function splitVueModule(vueModule, packer){
     
     if (templateText){
         jobs.push(
-            packer.addModule({
+            packer.addOrUpdateModule({
                     name: vueModule.name + '.template',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.template',
@@ -25,6 +25,7 @@ module.exports = async function splitVueModule(vueModule, packer){
                     baseDir: vueModule.baseDir,
                     type: 'vue.tpl',
                     source: templateText.text,
+                    needUpdate: true,
                 })
                 .then(m => {
                     template = m
@@ -35,7 +36,7 @@ module.exports = async function splitVueModule(vueModule, packer){
 
     if (scriptText){
         jobs.push(
-            packer.addModule({
+            packer.addOrUpdateModule({
                     name: vueModule.name + '.script',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.script',
@@ -44,6 +45,7 @@ module.exports = async function splitVueModule(vueModule, packer){
                     baseDir: vueModule.baseDir,
                     type: 'js',
                     source: fixVueScriptExportDefault(scriptText.text),
+                    needUpdate: true,
                 })
                 .then(m => {
                     script = m
@@ -54,7 +56,7 @@ module.exports = async function splitVueModule(vueModule, packer){
 
     if (styleText){
         jobs.push(
-            packer.addModule({
+            packer.addOrUpdateModule({
                     name: vueModule.name + '.style',
                     isInternal: true,
                     file: 'internal://' + vueModule.fullPathName + '.style',
@@ -63,6 +65,7 @@ module.exports = async function splitVueModule(vueModule, packer){
                     baseDir: vueModule.baseDir,
                     type: styleText.lang || 'css',
                     source: styleText.text,
+                    needUpdate: true,
                 })
                 .then(m => {
                     style = m

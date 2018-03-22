@@ -2,8 +2,17 @@ const {humanizeSize} = require('./utils')
 
 module.exports = class NSPackBuiltResult{
     constructor(packer){
-        this.packer = packer
+        this._packer = () => packer
+        this._buildTimes = packer.buildTimes
         this.modules = {}
+    }
+
+    get packer(){
+        return this._packer()
+    }
+
+    buildTimes(){
+        return this._buildTimes
     }
 
     spentTimeSeconds(){

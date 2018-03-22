@@ -32,7 +32,7 @@ module.exports = class NSPackModule {
     }
 
     async loadSource(){
-        if (this.source === undefined && !this.isExternal && !this.isInternal){
+        if ((this.needUpdate || this.source === undefined) && !this.isExternal && !this.isInternal){
             this.packer.debugLevel > 1 && debug("read module source from file: %o, module: %o", this.fullPathName, this)
 
             const readFileAt = Date.now()
