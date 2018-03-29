@@ -81,6 +81,7 @@ extend(NSPack.prototype, {
 
             await this._resolveExternalModules()
             await this._buildFromEntries()
+            await this._outputManifests()
 
             this._result.updated = true
             this.buildEndAt = new Date()
@@ -435,6 +436,49 @@ extend(NSPack.prototype, {
             return this._config.babelrc
         }
     },
+    async _outputManifests(){
+        const manifestsConfig = this._config.outputHashManifests
+        if (!manifestsConfig || (!manifestsConfig.json && !manifestsConfig.jsonp)){
+            return
+        }
+
+        const manifests = this._buildManifests()
+        await this._applyHook('buildManifests', manifests)
+
+        const manifestsJson = JSON.stringify(manifests)
+
+        const jobs = []
+        if (manifestsConfig.json){
+            jobs.push(this._writeOutputFile(manifestsConfig.json, manifestsJson))
+        }
+        
+        if (manifestsConfig.jsonp){
+            const jsonpCb = manifestsConfig.jsonpCallback || 'nspackManifestsJsonpCallback'
+            jobs.push(this._writeOutputFile(manifestsConfig.jsonp, `${jsonpCb}(${manifestsJson})`))
+        }
+
+        await Promise.all(jobs)
+    },
+    _buildManifests(){
+        const manifests = {}
+        for (let m of Object.values(this._config.entry)){
+            // todo...
+            const bundle = m.bundle
+            if (bundle.script.valid){
+                manifests[m.name + '.js'] = bundle.script.hash
+            }
+
+            if (bundle.style.valid){
+                manifests[m.name + '.css'] = bundle.style.hash
+            }
+
+            if (bundle.html.valid){
+                manifests[m.name + '.html'] = bundle.html.hash
+            }
+        }
+
+        return manifests
+    },
     _buildOutputName({type, name, hash}){
         const defaultOutputConfig = this._config.output['*']
         const moduleOutputConfig = this._config.output[name] || defaultOutputConfig
@@ -469,6 +513,11 @@ extend(NSPack.prototype, {
         }
 
         await outputFile.write()
+    },
+    async _writeOutputFile(filename, content){
+        const filePath = this._config.resolveOutputFile(filename)
+        await this._mkdirIfNotExists(path.dirname(filePath))
+        await this._callFsOpAsync('writeFile', filePath, content, 'utf8')
     },
     async _resolveModule(moduleName, baseDir){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
@@ -728,6 +777,7 @@ function sanitizeConfig(config){
 
     r.hooks = extend({
         outputFile: noop,
+        buildManifests: noop,
     }, r.hooks || {})
 
     r.watchInterval = +r.watchInterval || 500

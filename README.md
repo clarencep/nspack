@@ -22,5 +22,4 @@ npm install --save-dev nspack@0.1
 TODO:
 ========
 
-- [] hash manifests
 - [] profiling
