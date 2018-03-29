@@ -132,6 +132,12 @@ function loadNspackConfig(cfg){
         process.chdir(cfg.workingDirectory)
     }
 
+    // try use the working directory's nspack
+    try {
+        var wdNspack = require('nspack')
+        nspack = wdNspack
+    } catch (e){}
+
     var configFileName = require('path').resolve(process.cwd(), cfg.configFile || 'nspack.config.js')
     return require(configFileName)
 }
