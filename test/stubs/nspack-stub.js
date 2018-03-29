@@ -8,5 +8,14 @@ module.exports = class NSPackStub {
         this.modulesByName[module.name] = module
         return module
     }
+    async addOrUpdateModule(module){
+        if (this.modulesByName[module.name]){
+            this.modulesByName[module.name] = module
+        }
+
+        this.modules.push(module)
+        this.modulesByName[module.name] = module
+        return module
+    }
 }
 
