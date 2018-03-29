@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var nspack = require('./index.js')
 var debug = require('debug')('nspack')
 
@@ -13,6 +14,9 @@ if (isHelpCommand(command)){
 } else if (command === 'build' || command === undefined){
     args.shift()
     runBuild(args)
+} else {
+    printHelp()
+    exit(1)
 }
 
 function isHelpCommand(cmd){
