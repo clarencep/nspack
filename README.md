@@ -22,6 +22,5 @@ npm install --save-dev nspack@0.1
 TODO:
 ========
 
-- [] watch
 - [] hash manifests
 - [] profiling
