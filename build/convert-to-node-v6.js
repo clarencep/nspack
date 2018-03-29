@@ -5,29 +5,36 @@ var PACKAGE_ROOT = path.join(__dirname, '..')
 
 var packageInfoMod = {
 
-  "dependencies": {
-    "babel": "^6.23.0",
-    "babel-core": "^6.26.0",
-    "babel-polyfill": "^6.26.0",
-    "debug": "^3.1.0",
-    "md5": "^2.2.1",
-    "vue-template-compiler": "^2.5.16",
-    "vue-template-es2015-compiler": "^1.6.0"
-  },
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-plugin-transform-regenerator": "^6.26.0",
-    "babel-plugin-transform-runtime": "^6.23.0",
-    "babel-preset-es2015": "^6.24.1",
-    "babel-preset-latest": "^6.24.1",
-    "babel-preset-stage-2": "^6.24.1",
-    "intelli-espower-loader": "^1.0.1",
-    "mocha": "^5.0.4",
-    "power-assert": "^1.4.4"
-  },
-  "engines": {
-    "node": ">=6.9"
-  }
+    "dependencies": {
+        "async": "^2.6.0",
+        "autoprefixer": "^8.2.0",
+        "babel": "^6.23.0",
+        "babel-core": "^6.26.0",
+        "babel-polyfill": "^6.26.0",
+        "cssnano": "^3.10.0",
+        "debug": "^3.1.0",
+        "html-minifier": "^3.5.12",
+        "less": "^3.0.1",
+        "md5": "^2.2.1",
+        "postcss": "^6.0.21",
+        "uglify-js": "^3.3.16",
+        "vue-template-compiler": "^2.5.16",
+        "vue-template-es2015-compiler": "^1.6.0"
+    },
+    "devDependencies": {
+        "babel-cli": "^6.26.0",
+        "babel-plugin-transform-regenerator": "^6.26.0",
+        "babel-plugin-transform-runtime": "^6.23.0",
+        "babel-preset-es2015": "^6.24.1",
+        "babel-preset-latest": "^6.24.1",
+        "babel-preset-stage-2": "^6.24.1",
+        "intelli-espower-loader": "^1.0.1",
+        "mocha": "^5.0.4",
+        "power-assert": "^1.4.4"
+    },
+    "engines": {
+        "node": ">=6.9"
+    }
 }
 
 console.log("updating package.json...")
