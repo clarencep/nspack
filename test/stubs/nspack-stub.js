@@ -1,3 +1,4 @@
+var regeneratorRuntime = require("regenerator-runtime");
 module.exports = class NSPackStub {
     constructor(){
         this.modules = []
