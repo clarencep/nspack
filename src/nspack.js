@@ -442,7 +442,7 @@ extend(NSPack.prototype, {
         return template.replace('[name]', name).replace('[hash]', hash)
     },
     _hash(content){
-        return md5(content || '').substring(0, this._config.hash_length)
+        return md5(content || '').substring(0, this._config.hashLength)
     },
     async _outputFile(outputName, content, entryModule, outputType){
         if (content === undefined){
