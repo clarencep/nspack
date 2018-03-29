@@ -9,6 +9,9 @@
   },
   "author": "clarencep",
   "license": "ISC",
+  "bin": {
+    "nspack": "./cli.js"
+  },
   "dependencies": {
     "async": "^2.6.0",
     "autoprefixer": "^8.1.0",
