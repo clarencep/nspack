@@ -188,6 +188,20 @@ const {foo, bar, baz} = __require_module__(${stubModules['bar']})
     {
         inputModule: makeTestModule({
             source: `
+import {foo as bar, bar as baz, zzz} from 'bar'
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+const {foo : bar, bar : baz, zzz} = __require_module__(${stubModules['bar']})
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
 export default function Hello(){
     console.log("Hello world!")
 }

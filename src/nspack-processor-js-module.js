@@ -121,7 +121,7 @@ function getJsLinesRegexHandlers(resolveModuleId){
             ($0, $1, $2, $3, $4) => (
                 jsVarRegex.test($2) 
                 ? `${$1}const ${$2} = __extract_default__(__require_module__(${resolveModuleId($4, $3)}))`
-                : `${$1}const ${$2} = __require_module__(${resolveModuleId($4, $3)})`
+                : `${$1}const ${convertImportAsToObjectAssign($2)} = __require_module__(${resolveModuleId($4, $3)})`
             ),
         ],
         [
@@ -158,7 +158,6 @@ function getJsLinesRegexHandlers(resolveModuleId){
             ($0, $1, $2) => `${$1}__ES_MODULE__; exports.${$2} = class ${$2}{`,
         ],
         // todo:
-        // import { import1 as name1, import2 as name2, …, nameN } from ...
         // export { name1, name2, …, nameN };
         // export { variable1 as name1, variable2 as name2, …, nameN };
         // export let name1, name2, …, nameN; // also var
@@ -175,4 +174,6 @@ function parseJsStr(strLiteral, strQuote){
     return strLiteral
 }
 
-
+function convertImportAsToObjectAssign(s){
+    return s.replace(/\bas\b/g, ':')
+}
