@@ -5,6 +5,18 @@ var debug = require('debug')('nspack')
 var args = process.argv.slice(2)
 var command = args[0]
 
+process.on('uncaughtException', function (err) {
+    console.log("\nUncaught exception: ", err);
+    console.log("\n", err.stack);
+    process.exit(2); 
+});
+
+process.on('unhandledRejection', function (err) {
+    console.log("\nUncaught rejection: ", err);
+    console.log("\n", err.stack);
+    process.exit(3); 
+});
+
 if (isHelpCommand(command)){
     printHelp()
     exit(1)
@@ -58,6 +70,10 @@ function runBuild(args){
                  .then(res => {
                     debug("done nspack.")
                     console.log(res.summary())
+                 })
+                 .catch(err => {
+                    process.stderr.write("nspack failed: " + (err.stack || err))
+                    process.exit(1)
                  })
 }
 

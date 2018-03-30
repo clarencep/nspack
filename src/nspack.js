@@ -519,7 +519,7 @@ extend(NSPack.prototype, {
         await this._mkdirIfNotExists(path.dirname(filePath))
         await this._callFsOpAsync('writeFile', filePath, content, 'utf8')
     },
-    async _resolveModule(moduleName, baseDir){
+    async _resolveModule(moduleName, baseDir, resolvingParents){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
 
         if (moduleName in this._config.externals){
@@ -529,6 +529,7 @@ extend(NSPack.prototype, {
         const module = await this._addModuleIfNotExists({
             name: moduleName,
             baseDir: baseDir,
+            resolvingParents,
         })
 
         await this._processModule(module)
@@ -581,7 +582,7 @@ extend(NSPack.prototype, {
         }
 
         if (!module.fullPathName){
-            throw new Error(`Failed to resolve module '${module.name}' in directory '${module.baseDir}'`)
+            throw new Error(`Failed to resolve module '${module.name}' in directory '${module.baseDir}'` + (module.resolvingParents || ''))
         }
 
         if (module.fullPathName in this._modulesByFullPathName){

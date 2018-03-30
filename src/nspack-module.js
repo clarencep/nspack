@@ -29,6 +29,8 @@ module.exports = class NSPackModule {
             this.encoding = this._isTextFile() ? 'utf8' : null
         }
 
+        this.resolvingParentsAndSelf = "\n-- " + this.relativePath + (this.resolvingParents || '')
+
         this.dependencies = []
         
     }

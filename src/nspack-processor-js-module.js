@@ -29,7 +29,11 @@ module.exports = async function (module, packer){
 
         const resolvingInfo = {
             idPlaceholder,
-            resolving: packer._resolveModule(reqModuleName, module.fullFileDirName)
+            resolving: packer._resolveModule(
+                                reqModuleName, 
+                                module.fullFileDirName, 
+                                module.resolvingParentsAndSelf,
+                            )
                             .then(reqModule => {
                                 resolvingInfo.id = reqModule.id
                                 module.dependencies.push(reqModule)
