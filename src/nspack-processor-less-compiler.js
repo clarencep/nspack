@@ -15,11 +15,11 @@ module.exports = async function (module, packer){
 
     const fragments = splitLessSource(source)
 
-    fragments.forEach((x,i) => debug("!!!!!!!!!!!!!fragments[%o]: %o", i, x))
+    // fragments.forEach((x,i) => debug("!!!!!!!!!!!!!fragments[%o]: %o", i, x))
 
     const builtFragments = await Promise.all(fragments.map(x => buildFragment(x, module, packer)))
 
-    builtFragments.forEach((x,i) => debug("!!!!!!!!!!!!!builtFragments[%o]: %o", i, x))
+    // builtFragments.forEach((x,i) => debug("!!!!!!!!!!!!!builtFragments[%o]: %o", i, x))
 
     module.builtSource = builtFragments.join("")
 }

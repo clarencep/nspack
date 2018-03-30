@@ -600,12 +600,12 @@ extend(NSPack.prototype, {
         return module
     },
     async _resolveModuleFullPathName(moduleName, baseDir) {
-        if (moduleName[0] === '@'){
-            return await this._nodeModuleResolver.resolveModuleFullPathName(
-                path.join(this._config.entryBase, moduleName.substring(1)), 
-                ''
-            )
-        }
+        // if (moduleName[0] === '@'){
+        //     return await this._nodeModuleResolver.resolveModuleFullPathName(
+        //         path.join(this._config.entryBase, moduleName.substring(1)), 
+        //         ''
+        //     )
+        // }
 
         return await this._nodeModuleResolver.resolveModuleFullPathName(moduleName, baseDir)
     },

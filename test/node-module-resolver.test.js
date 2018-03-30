@@ -38,5 +38,3 @@ describe('Test NodeModuleResolver alias', function(){
         })
     })
 })
-
-
