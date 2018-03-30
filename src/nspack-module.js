@@ -3,6 +3,7 @@ const extend = Object.assign
 const debug = require('debug')('nspack')
 const {tryFStat, readFile,} = require('./utils')
 
+const textFileTypesRe = /^(txt|text|js|jsx|css|less|json|htm|html|vue)$/
 
 module.exports = class NSPackModule {
     constructor(attributes, packer){
@@ -24,7 +25,12 @@ module.exports = class NSPackModule {
             this.fullFileDirName = path.dirname(this.fullPathName)
         }
 
+        if (this.encoding === undefined){
+            this.encoding = this._isTextFile() ? 'utf8' : null
+        }
+
         this.dependencies = []
+        
     }
 
     get packer(){
@@ -36,7 +42,7 @@ module.exports = class NSPackModule {
             this.packer.debugLevel > 1 && debug("read module source from file: %o, module: %o", this.fullPathName, this)
 
             const readFileAt = Date.now()
-            this.source = await readFile(this.fullPathName, "utf8")
+            this.source = await readFile(this.fullPathName, {encoding: this.encoding})
             this.sourceUpdatedAt = readFileAt
             return 
         }
@@ -64,6 +70,10 @@ module.exports = class NSPackModule {
         }
     }
 
+    _isTextFile(){
+        const type = this.type
+        return textFileTypesRe.test(type)
+    }
 
 
 }

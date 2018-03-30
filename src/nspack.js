@@ -47,7 +47,7 @@ function NSPack(config){
     this._modules = {} // id => module
     this._modulesByFullPathName = {} // fullPathName => module
     this._result = new NSPackBuiltResult(this)
-    this._nodeModuleResolver = new NodeModuleResolver()
+    this._nodeModuleResolver = new NodeModuleResolver(this._config.resolve)
     return this
 }
 
@@ -781,6 +781,10 @@ function sanitizeConfig(config){
     }, r.hooks || {})
 
     r.watchInterval = +r.watchInterval || 500
+
+    r.resolve = r.resolve || {}
+    r.resolve.extensions = r.resolve.extensions || ['.js']
+    r.resolve.alias = r.resolve.alias || {'@': r.entryBase}
 
     return r
 }

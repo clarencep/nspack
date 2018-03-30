@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const cb2p = require('./cb2p')
 const debug = require('debug')('nspack')
+const Cache = require('./cache')
 
 const extend = Object.assign
 
@@ -14,32 +15,44 @@ const {
 
 module.exports = NodeModuleResolver
 
-function NodeModuleResolver(){
+function NodeModuleResolver(options){
     if (!(this instanceof NodeModuleResolver)){
         return new NodeModuleResolver()
     }
 
-    this._cache = {}
+    options = options || {}
+    this._extensions = options.extensions || []
+    this._alias = this._compileAlias(options.alias)
+    
+    this._resolveCache = new Cache()
+    this._tryFileCache = new Cache()
+    this._aliasCache = new Cache()
 
     return this
 }
 
 extend(NodeModuleResolver.prototype, {
     async resolveModuleFullPathName(moduleName, baseDir){
-        if (moduleName[0] === '.'){
-            return await this._tryFileCached(path.join(baseDir, moduleName))
+        moduleName = this._expandAlias(moduleName)
+
+        if (moduleName && path.isAbsolute(moduleName)){
+            return await this._tryFile(moduleName)
         }
 
-        return this._remember('module:' + moduleName + '@' + baseDir, async () => {
+        if (moduleName[0] === '.'){
+            return await this._tryFile(path.join(baseDir, moduleName))
+        }
+
+        return this._resolveCache._remember(moduleName + '@' + baseDir, async () => {
             if (!baseDir){
-                return await this._tryFileCached(moduleName)
+                return await this._tryFile(moduleName)
             }
 
             let baseDirParts = baseDir.split(path.sep)
 
             // try read node modules
             for (let n = baseDirParts.length - 1; n > 0; n--){
-                const r = await this._tryFileCached(path.join(baseDirParts.slice(0, n).join(path.sep), 'node_modules', moduleName))
+                const r = await this._tryFile(path.join(baseDirParts.slice(0, n).join(path.sep), 'node_modules', moduleName))
                 if (r){
                     return r
                 }
@@ -47,22 +60,16 @@ extend(NodeModuleResolver.prototype, {
         })
     },
     resetCache(){
-        this._cache = {}
-    },
-    // _remember(cacheKey, loadFunc){
-    //     return loadFunc()
-    // },
-    async _remember(cacheKey, loadFunc){
-        if (cacheKey in this._cache){
-            return this._cache[cacheKey]
-        }
-
-        return this._cache[cacheKey] = await loadFunc()
-    },
-    async _tryFileCached(filepath){
-        return this._remember('resolve:' + filepath, () => this._tryFile(filepath))
+        this._resolveCache.resetCache()
+        this._tryFileCache.resetCache()
+        this._aliasCache.resetCache()
     },
     async _tryFile(filepath){
+        return this._tryFileCache._remember(filepath, () => {
+            return this._tryFileNoCache(filepath)
+        })
+    },
+    async _tryFileNoCache(filepath){
         let fileIsDir = false
 
         const r = await tryFStat(filepath)
@@ -74,11 +81,13 @@ extend(NodeModuleResolver.prototype, {
             fileIsDir = r.isDirectory()
         }
 
-        // try jquery => jquery.js
-        const jsFile = filepath + '.js'
-        const r2 = await tryFStat(jsFile)
-        if (r2 && r2.isFile()){
-            return jsFile
+        for (let extName of this._extensions){
+            // try jquery => jquery.js
+            const jsFile = filepath + extName
+            const r2 = await tryFStat(jsFile)
+            if (r2 && r2.isFile()){
+                return jsFile
+            }
         }
 
         if (fileIsDir){
@@ -96,8 +105,88 @@ extend(NodeModuleResolver.prototype, {
             }
         }
 
-
         return false;
+    },
+    _compileAlias(aliases){
+        if (!aliases){
+            return
+        }
+
+        let r = []
+
+        const reExp = []
+        const reReplacements = {}
+
+        Object.keys(aliases).forEach(aliasName => {
+            const aliasNameLen = aliasName.length
+            const realName = aliases[aliasName]
+            const item = {
+                aliasName,
+                aliasNameLen,
+                search:      aliasName,
+                searchLen:   aliasNameLen,
+                replacement: realName,
+                isFullMatch: false,
+            }
+
+            if (aliasName[aliasNameLen - 1] === '$'){
+                item.search = aliasName.substr(0, aliasNameLen - 1)
+                item.searchLen = item.search.length
+                item.isFullMatch = true
+            }
+
+            r.push(item)
+        })
+
+        // sort by alias name length DESC
+        r = r.sort((a, b) => b.aliasNameLen - a.aliasNameLen)
+        
+        const resolveOnce = (x) => {
+            const xLen = x.length
+            for (let item of r){
+                if (item.searchLen < xLen){
+                    if (!item.isFullMatch && item.search === x.substr(0, item.searchLen)){
+                        return item.replacement + x.substr(item.searchLen)
+                    } // else: no match
+                } else if (item.searchLen === xLen){
+                    if (item.search === x){
+                        return item.replacement
+                    } // else: no match
+                } // else: no match
+            }
+
+            return x
+        }
+
+        const resolveAll = (x, maxDepth=10) => {
+            if (maxDepth <= 0){
+                throw new Error("max depth reached when resolving alias for " + x)
+            }
+
+            const y = resolveOnce(x)
+            if (y !== x){
+                return resolveAll(y, maxDepth - 1)
+            }
+
+            return y
+        }
+
+        Object.keys(reReplacements).forEach(aliasName => {
+            reReplacements[aliasName] = resolveAll(aliasName)
+        })
+
+        return {
+            resolveOnce,
+            resolveAll,
+        }
+    },
+    _expandAlias(alias){
+        return this._aliasCache._remember(alias, () => {
+            return this._expandAliasNoCache(alias)
+        })
+    },
+    _expandAliasNoCache(alias){
+        return this._alias.resolveAll(alias)
     }
 })
 
@@ -109,17 +198,17 @@ extend(NodeModuleResolver.prototype, {
 //     return res
 // })
 
+// NodeModuleResolver.prototype._tryFileNoCache = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! _tryFileNoCache(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _tryFileNoCache(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
+
 // NodeModuleResolver.prototype._tryFile = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
 //     debug("!!!!!!!!!!! _tryFile(%o) !!!!!!!!!!!", args)
 //     const res = await oldFunc.apply(this, args)
 //     debug("!!!!!!!!!!! _tryFile(%o) => %o !!!!!!!!!!!", args, res)
-//     return res
-// })
-
-// NodeModuleResolver.prototype._tryFileCached = decorate(NodeModuleResolver.prototype._tryFileCached, async function(oldFunc, ...args){
-//     debug("!!!!!!!!!!! _tryFileCached(%o) !!!!!!!!!!!", args)
-//     const res = await oldFunc.apply(this, args)
-//     debug("!!!!!!!!!!! _tryFileCached(%o) => %o !!!!!!!!!!!", args, res)
 //     return res
 // })
 

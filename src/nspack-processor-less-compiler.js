@@ -7,9 +7,8 @@ const importRegex = /@import ["']([^"']*?)["'];/g // todo: escape string??
 module.exports = async function (module, packer){
     module.builtType = 'css'
     
-
     if (!packer._lessModuleResolver){
-        packer._lessModuleResolver = new LessModuleResolver()
+        packer._lessModuleResolver = new LessModuleResolver(packer._config.resolve)
     }
 
     const source = module.source

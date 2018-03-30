@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "intelli-espower-loader": "^1.0.1",
+    "json3": "^3.3.2",
     "mocha": "^5.0.4",
     "power-assert": "^1.4.4"
   },
