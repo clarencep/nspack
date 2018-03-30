@@ -87,10 +87,11 @@ module.exports = async function (module, packer){
 
 function getJsLinesRegexHandlers(resolveModuleId){
     return [
-        [
-            /\/\/.*$/,
-            () => '',
-        ],
+        // todo: how to remove comments, but don't hurt URL string and RegExp??
+        // [
+        //     /\/\/.*$/,
+        //     () => '',
+        // ],
         [
             // const foo = require('bar');
             // [0] => " require('bar')"

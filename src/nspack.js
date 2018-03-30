@@ -441,9 +441,14 @@ extend(NSPack.prototype, {
     async _transCompile(jsCode){
         const babelConfig = await this._loadBabelRc()
 
-        const res = babel.transform(jsCode, babelConfig)
+        try{
+            const res = babel.transform(jsCode, babelConfig)
 
-        return `(function(__nspack__){${res.code};return __nspack__.r})({});`
+            return `(function(__nspack__){${res.code};return __nspack__.r})({});`
+        } catch (e){
+            fs.writeFileSync(path.join(this._config.outputBase, ".last-babel-failed.js"), jsCode)
+            throw e
+        }
     },
     async _loadBabelRc(){
         if (this._config.babelrc === false){
