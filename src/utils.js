@@ -9,6 +9,9 @@ module.exports = {
     humanizeSize,
     sleep,
     readFile: cb2p(fs.readFile),
+    serial,
+    parallel,
+    parallelLimit,
 }
 
 async function tryFStat(file){
@@ -58,3 +61,65 @@ function humanizeSize(sizeInBytes){
 function sleep(timeout){
     return new Promise(resolve => setTimeout(resolve, timeout))
 }
+
+async function serial(runnables){
+    for (let run of runnables){
+        await run()
+    }
+}
+
+async function parallel(runnables){
+    const jobs = []
+
+    for (let run of runnables){
+        jobs.push(run())
+    }
+
+    await Promise.all(jobs)
+}
+
+async function parallelLimit(runnables, limitNum){
+    limitNum = +limitNum || 10
+
+    const runnablesArr = []
+
+    for (let run of runnables){
+        runnablesArr.push(run)
+    }
+
+    return new Promise((resolve, reject) => {
+        const runnablesNum = runnablesArr.length
+
+        let hasRejected = false
+        let ranNum = 0
+        let runningNum = 0
+
+        const start = () => {
+            for (; runningNum < limitNum && ranNum < runnablesNum; 
+                   runningNum++, ranNum++){
+                const run = runnablesArr[ranNum]
+                const job = runJobAsPromise(run)
+                
+                job.then(() => {
+                    runningNum--
+
+                    if (!hasRejected){
+                        start()
+                    }
+                }, err => {
+                    runningNum--
+                    hasRejected = true
+                    reject(err)
+                })
+            }
+    
+        }
+
+        start()
+    })
+}
+
+async function runJobAsPromise(run){
+    return run()
+}
+

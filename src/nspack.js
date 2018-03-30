@@ -6,6 +6,7 @@ const babel = require('babel-core')
 const debug = require('debug')('nspack')
 
 
+
 const defaultModuleProcessors = require('./nspack-default-processors')
 
 const NodeModuleResolver = require('./node-module-resolver')
@@ -18,6 +19,9 @@ const {
     tryFStat,
     tryReadJsonFileContent,
     readFile,
+    serial,
+    parallel,
+    parallelLimit,
 } = require('./utils')
 
 const extend = Object.assign
@@ -174,15 +178,33 @@ extend(NSPack.prototype, {
         await Promise.all(jobs)
     },
     async _buildFromEntries(){
-        await Promise.all(
+        await this._buildFromEntries_serial()
+        // await this._buildFromEntries_parrell()
+    },
+    async _buildFromEntries_serial(){
+        await serial(
             Object.values(this._config.entry)
                   .filter(x => !x.processed || x.needUpdate)
-                  .map(module => this._buildEntryModule(module)
-                                     .then(module => {
-                                        module.processed = true
-                                        module.needUpdate = false
-                                        this._result.modules[module.name] = module
-                                     }))
+                  .map(module => 
+                            () => this._buildEntryModule(module)
+                                        .then(module => {
+                                            module.processed = true
+                                            module.needUpdate = false
+                                            this._result.modules[module.name] = module
+                                        })))
+    },
+    async _buildFromEntries_parrell(){
+        await parallelLimit(
+            Object.values(this._config.entry)
+                  .filter(x => !x.processed || x.needUpdate)
+                  .map(module => 
+                            () => this._buildEntryModule(module)
+                                        .then(module => {
+                                            module.processed = true
+                                            module.needUpdate = false
+                                            this._result.modules[module.name] = module
+                                        })),
+            /*limit=*/10
         )
     },
     async _buildEntryModule(entryModule){
