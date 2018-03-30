@@ -14,6 +14,7 @@ module.exports = function (module, packer){
 
     res.staticRenderFns.forEach(fn => {
         lines.push(toFunction(fn))
+        lines.push(',')
     })
     
     lines.push(']')
