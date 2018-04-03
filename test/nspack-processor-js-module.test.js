@@ -221,6 +221,44 @@ __set_esModule_flag__(exports)
     {
         inputModule: makeTestModule({
             source: `
+export default {
+    foo: 'bar'
+}
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__set_esModule_flag__(exports)
+; exports.default = {
+    foo: 'bar'
+}
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
+export default{
+    foo: 'bar'
+}
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__set_esModule_flag__(exports)
+; exports.default = {
+    foo: 'bar'
+}
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
 export let foo = function Hello(){
     console.log("Hello world!")
 }

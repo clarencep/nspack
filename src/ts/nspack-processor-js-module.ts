@@ -141,8 +141,8 @@ function getJsLinesRegexHandlers(resolveModuleId: ModuleIdResolver): JsLineRegex
         [
             // export default xxx
             // -> module.exports = xxx
-            /(^|[^0-9a-zA-Z_.$])export\s+default\s+/,
-            ($0, $1) => `${$1}__ES_MODULE__; exports.default = `, 
+            /(^|[^0-9a-zA-Z_.$])export\s+default($|[^0-9a-zA-Z_.$])/,
+            ($0, $1, $2) => `${$1}__ES_MODULE__; exports.default = ${$2}`, 
         ],
         // todo: export xxx
         [
