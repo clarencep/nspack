@@ -1,47 +1,43 @@
-
-const debug = require('debug')('nspack')
-const dataUrlProcessor = require('./nspack-processor-data-url')
-
-module.exports = {
+import jsModuleProcessor from './nspack-processor-js-module';
+import jsonProcessor from './nspack-processor-json';
+import cssOptimizerProcessor from './nspack-processor-css-optimizer';
+import lessCompilerProcessor from './nspack-processor-less-compiler';
+import * as dataUrlProcessor from './nspack-processor-data-url';
+import vueModuleProcessor from './nspack-processor-vue-module';
+import vueTemplateCompiler from './nspack-processor-vue-template-compiler';
+const map = {
     js: [
-        require('./nspack-processor-js-module'),
+        jsModuleProcessor,
     ],
-
     json: [
-        require('./nspack-processor-json'),
+        jsonProcessor,
     ],
-
     css: [
-        require('./nspack-processor-css-optimizer'),
+        cssOptimizerProcessor,
     ],
-
     less: [
-        require('./nspack-processor-less-compiler'),
-        require('./nspack-processor-css-optimizer'),
+        lessCompilerProcessor,
+        cssOptimizerProcessor,
     ],
-
     vue: [
-        require('./nspack-processor-vue-module'),
+        vueModuleProcessor,
     ],
-
     text: [
         textProcessor,
     ],
-    
     'vue.tpl': [
-        require('./nspack-processor-vue-template-compiler'),
+        vueTemplateCompiler,
     ],
-
-    bmp:  [ dataUrlProcessor.withMimeType('image/bmp') ],
-    png:  [ dataUrlProcessor.withMimeType('image/png') ],
-    jpg:  [ dataUrlProcessor.withMimeType('image/jpeg') ],
-    jpeg: [ dataUrlProcessor.withMimeType('image/jpeg') ],
-    gif:  [ dataUrlProcessor.withMimeType('image/gif') ],
-    webp: [ dataUrlProcessor.withMimeType('image/webp') ],
-    ico:  [ dataUrlProcessor.withMimeType('image/x-icon') ],
-}
-
-function textProcessor(module, packer){
-    module.builtType = 'js'
-    module.builtSource = `module.exports = ${JSON.stringify(module.source)}`
+    bmp: [dataUrlProcessor.withMimeType('image/bmp')],
+    png: [dataUrlProcessor.withMimeType('image/png')],
+    jpg: [dataUrlProcessor.withMimeType('image/jpeg')],
+    jpeg: [dataUrlProcessor.withMimeType('image/jpeg')],
+    gif: [dataUrlProcessor.withMimeType('image/gif')],
+    webp: [dataUrlProcessor.withMimeType('image/webp')],
+    ico: [dataUrlProcessor.withMimeType('image/x-icon')],
+};
+export default map;
+function textProcessor(module, packer) {
+    module.builtType = 'js';
+    module.builtSource = `module.exports = ${JSON.stringify(module.source)}`;
 }

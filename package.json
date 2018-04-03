@@ -4,9 +4,9 @@
   "description": "A non-standard pack tool",
   "main": "index.js",
   "scripts": {
-    "build": "npm run build-ts-to-es6",
-    "build-ts-to-es6": "babel src -d lib && node build/fix-regenerator-runtime.js ",
-    "build-es6-to-es5": "babel src -d lib && node build/fix-regenerator-runtime.js ",
+    "build": "npm run build-ts-to-es6 && npm run build-ts-to-es5",
+    "build-ts-to-es6": "tsc --outDir src/es6 --target es6",
+    "build-ts-to-es5": "tsc --outDir src/es5 --target es5",
     "test": "mocha --require ./test/bootloader"
   },
   "author": "clarencep",

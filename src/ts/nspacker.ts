@@ -837,7 +837,6 @@ define(${JSON.stringify(libName)}, [], function(){
 `
             }
         } else {
-            return 
             return `
 define([], function(){
     return ${code}

@@ -1,5 +1,5 @@
-var NsPacker = extractDefault(require('./nspacker'))
-var extend = Object.assign
+const NsPacker = extractDefault(require('./nspacker'))
+const extend = Object.assign
 
 module.exports = NsPacker
 

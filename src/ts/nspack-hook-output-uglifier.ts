@@ -119,7 +119,7 @@ class OutputUglifier{
 
         if (outputFile.outputType === 'html'){
             const {jsModule, cssModule} = outputFile.entryModule
-            outputFile.content = await outputFile.entryModule.html({
+            const html = await outputFile.entryModule.loadHtmlSource.call({
                 ...outputFile.entryModule,
                 bundle: {
                     ...outputFile.entryModule.bundle,
@@ -127,6 +127,8 @@ class OutputUglifier{
                     stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${getMinimizedPath(cssModule.outputName)}" >` : '',
                 }
             })
+
+            outputFile.content = html.sourceCode
         }
 
         if (!outputFile.content){

@@ -1,12 +1,16 @@
-export default function (module, packer) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function default_1(module, packer) {
     return processModule(module, packer, guessModuleMediaType(module));
 }
-export function withMimeType(mimeType) {
+exports.default = default_1;
+function withMimeType(mimeType) {
     return function (module, packer) {
         return processModule(module, packer, mimeType);
     };
 }
-const moduleTypeToMediaType = {
+exports.withMimeType = withMimeType;
+var moduleTypeToMediaType = {
     'txt': 'text/plain',
     'text': 'text/plain',
     'js': 'application/javascript',
@@ -23,7 +27,7 @@ const moduleTypeToMediaType = {
 };
 function processModule(module, packer, mediaType) {
     module.builtType = 'js';
-    module.builtSource = `data:${mediaType};base64,` + toBuffer(module.source).toString('base64');
+    module.builtSource = "data:" + mediaType + ";base64," + toBuffer(module.source).toString('base64');
 }
 function guessModuleMediaType(module) {
     return moduleTypeToMediaType[module.type] || 'application/octet-stream';

@@ -122,6 +122,10 @@ export interface EntryModule extends NewEntryModule {
     processed: boolean;
     needUpdate: boolean;
 
+    loadJsSource(): Promise<EntryContent>;
+    loadCssSource(): Promise<EntryContent>;
+    loadHtmlSource(): Promise<EntryContent>;
+
     _checkIfNeedUpdate0(): boolean;
     _checkIfNeedUpdate1(): boolean;
 }

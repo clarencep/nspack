@@ -1,247 +1,295 @@
-var regeneratorRuntime = require("regenerator-runtime");
-function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
-
-var fs = require('fs');
-var path = require('path');
-var cb2p = require('./cb2p');
-var debug = require('debug')('nspack');
-
-var extend = Object.assign;
-
-var readFile = cb2p(fs.readFile);
-
-var _require = require('./utils'),
-    tryFStat = _require.tryFStat,
-    tryReadJsonFileContent = _require.tryReadJsonFileContent;
-
-module.exports = NodeModuleResolver;
-
-function NodeModuleResolver() {
-    if (!(this instanceof NodeModuleResolver)) {
-        return new NodeModuleResolver();
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [0, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
-
-    this._cache = {};
-
-    return this;
-}
-
-extend(NodeModuleResolver.prototype, {
-    resolveModuleFullPathName: function resolveModuleFullPathName(moduleName, baseDir) {
-        var _this = this;
-
-        return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee2() {
-            return regeneratorRuntime.wrap(function _callee2$(_context2) {
-                while (1) {
-                    switch (_context2.prev = _context2.next) {
-                        case 0:
-                            if (!(moduleName[0] === '.')) {
-                                _context2.next = 2;
-                                break;
-                            }
-
-                            return _context2.abrupt('return', path.join(baseDir, moduleName));
-
-                        case 2:
-                            return _context2.abrupt('return', _this._remember('module:' + moduleName + '@' + baseDir, _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee() {
-                                var baseDirParts, n, r;
-                                return regeneratorRuntime.wrap(function _callee$(_context) {
-                                    while (1) {
-                                        switch (_context.prev = _context.next) {
-                                            case 0:
-                                                baseDirParts = baseDir.split(path.sep);
-
-                                                // try read node modules
-
-                                                n = baseDirParts.length - 1;
-
-                                            case 2:
-                                                if (!(n > 0)) {
-                                                    _context.next = 11;
-                                                    break;
-                                                }
-
-                                                _context.next = 5;
-                                                return _this._tryFileCached(path.join(baseDirParts.slice(0, n).join(path.sep), 'node_modules', moduleName));
-
-                                            case 5:
-                                                r = _context.sent;
-
-                                                if (!r) {
-                                                    _context.next = 8;
-                                                    break;
-                                                }
-
-                                                return _context.abrupt('return', r);
-
-                                            case 8:
-                                                n--;
-                                                _context.next = 2;
-                                                break;
-
-                                            case 11:
-                                            case 'end':
-                                                return _context.stop();
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+var path = require("path");
+var cache_1 = require("./cache");
+var utils_1 = require("./utils");
+var pathSepRe = /[\\\/]/;
+var NodeModuleResolver = /** @class */ (function () {
+    function NodeModuleResolver(options) {
+        options = options || {};
+        this._extensions = options.extensions || ['.js'];
+        this._alias = this._compileAlias(options.alias);
+        this._resolveCache = new cache_1.default();
+        this._tryFileCache = new cache_1.default();
+        this._aliasCache = new cache_1.default();
+        this._packageJsonCache = new cache_1.default();
+    }
+    NodeModuleResolver.prototype.resolveModuleFullPathName = function (moduleName, baseDir) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        moduleName = this._expandAlias(moduleName);
+                        if (!(moduleName && path.isAbsolute(moduleName))) return [3 /*break*/, 2];
+                        return [4 /*yield*/, this._tryFile(moduleName)];
+                    case 1: return [2 /*return*/, _a.sent()];
+                    case 2:
+                        if (!(moduleName[0] === '.')) return [3 /*break*/, 4];
+                        return [4 /*yield*/, this._tryFile(path.join(baseDir, moduleName))];
+                    case 3: return [2 /*return*/, _a.sent()];
+                    case 4: return [2 /*return*/, this._resolveCache._remember(moduleName + '@' + baseDir, function () { return __awaiter(_this, void 0, void 0, function () {
+                            var baseDirParts, n, r;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        if (!!baseDir) return [3 /*break*/, 2];
+                                        return [4 /*yield*/, this._tryFile(moduleName)];
+                                    case 1: return [2 /*return*/, _a.sent()];
+                                    case 2:
+                                        baseDirParts = baseDir.split(pathSepRe);
+                                        n = baseDirParts.length;
+                                        _a.label = 3;
+                                    case 3:
+                                        if (!(n > 0)) return [3 /*break*/, 6];
+                                        return [4 /*yield*/, this._tryFile(path.join(baseDirParts.slice(0, n).join(path.sep), 'node_modules', moduleName))];
+                                    case 4:
+                                        r = _a.sent();
+                                        if (r) {
+                                            return [2 /*return*/, r];
                                         }
-                                    }
-                                }, _callee, _this);
-                            }))));
-
-                        case 3:
-                        case 'end':
-                            return _context2.stop();
-                    }
+                                        _a.label = 5;
+                                    case 5:
+                                        n--;
+                                        return [3 /*break*/, 3];
+                                    case 6: return [2 /*return*/];
+                                }
+                            });
+                        }); })];
                 }
-            }, _callee2, _this);
-        }))();
-    },
-    _remember: function _remember(cacheKey, loadFunc) {
-        var _this2 = this;
-
-        return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee3() {
-            return regeneratorRuntime.wrap(function _callee3$(_context3) {
-                while (1) {
-                    switch (_context3.prev = _context3.next) {
-                        case 0:
-                            if (!(cacheKey in _this2._cache)) {
-                                _context3.next = 2;
-                                break;
+            });
+        });
+    };
+    NodeModuleResolver.prototype.resetCache = function () {
+        this._resolveCache.resetCache();
+        this._tryFileCache.resetCache();
+        this._aliasCache.resetCache();
+        this._packageJsonCache.resetCache();
+    };
+    NodeModuleResolver.prototype._tryFile = function (filepath) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, this._tryFileCache._remember(filepath, function () {
+                        return _this._tryFileNoCache(filepath);
+                    })];
+            });
+        });
+    };
+    NodeModuleResolver.prototype._tryFileNoCache = function (filepath) {
+        return __awaiter(this, void 0, void 0, function () {
+            var fileIsDir, r, _i, _a, extName, jsFile, r2, packageJson, dirIndexJs, r3;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        fileIsDir = false;
+                        return [4 /*yield*/, utils_1.tryFStat(filepath)];
+                    case 1:
+                        r = _b.sent();
+                        if (r) {
+                            if (r.isFile()) {
+                                return [2 /*return*/, filepath];
                             }
-
-                            return _context3.abrupt('return', _this2._cache[cacheKey]);
-
-                        case 2:
-                            _context3.next = 4;
-                            return loadFunc();
-
-                        case 4:
-                            return _context3.abrupt('return', _this2._cache[cacheKey] = _context3.sent);
-
-                        case 5:
-                        case 'end':
-                            return _context3.stop();
-                    }
-                }
-            }, _callee3, _this2);
-        }))();
-    },
-    _tryFileCached: function _tryFileCached(filepath) {
-        var _this3 = this;
-
-        return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee4() {
-            return regeneratorRuntime.wrap(function _callee4$(_context4) {
-                while (1) {
-                    switch (_context4.prev = _context4.next) {
-                        case 0:
-                            return _context4.abrupt('return', _this3._remember('resolve:' + filepath, function () {
-                                return _this3._tryFile(filepath);
-                            }));
-
-                        case 1:
-                        case 'end':
-                            return _context4.stop();
-                    }
-                }
-            }, _callee4, _this3);
-        }))();
-    },
-    _tryFile: function _tryFile(filepath) {
-        var _this4 = this;
-
-        return _asyncToGenerator( /*#__PURE__*/regeneratorRuntime.mark(function _callee5() {
-            var fileIsDir, r, r2, packageJson, dirIndexJs, r3;
-            return regeneratorRuntime.wrap(function _callee5$(_context5) {
-                while (1) {
-                    switch (_context5.prev = _context5.next) {
-                        case 0:
-                            fileIsDir = false;
-
-                            // try directly the file
-
-                            _context5.next = 3;
-                            return tryFStat(filepath);
-
-                        case 3:
-                            r = _context5.sent;
-
-                            if (!r) {
-                                _context5.next = 8;
-                                break;
-                            }
-
-                            if (!r.isFile()) {
-                                _context5.next = 7;
-                                break;
-                            }
-
-                            return _context5.abrupt('return', filepath);
-
-                        case 7:
-
                             fileIsDir = r.isDirectory();
-
-                        case 8:
-
-                            // try jquery => jquery.js
-                            jsFile = filepath + '.js';
-                            _context5.next = 11;
-                            return tryFStat(jsFile);
-
-                        case 11:
-                            r2 = _context5.sent;
-
-                            if (!(r2 && r2.isFile())) {
-                                _context5.next = 14;
-                                break;
-                            }
-
-                            return _context5.abrupt('return', jsFile);
-
-                        case 14:
-                            if (!fileIsDir) {
-                                _context5.next = 28;
-                                break;
-                            }
-
-                            // try "main" script in the package.json
-                            packageJson = tryReadJsonFileContent(path.join(filepath, 'package.json'));
-
-                            if (!packageJson) {
-                                _context5.next = 22;
-                                break;
-                            }
-
-                            _context5.next = 19;
-                            return _this4._tryFile(path.join(filepath, packageJson.main || 'index.js'));
-
-                        case 19:
-                            return _context5.abrupt('return', _context5.sent);
-
-                        case 22:
-                            // try index.js in the directory
-                            dirIndexJs = path.join(filepath, 'index.js');
-                            _context5.next = 25;
-                            return tryFStat(dirIndexJs);
-
-                        case 25:
-                            r3 = _context5.sent;
-
-                            if (!(r3 && r3.isFile())) {
-                                _context5.next = 28;
-                                break;
-                            }
-
-                            return _context5.abrupt('return', dirIndexJs);
-
-                        case 28:
-                            return _context5.abrupt('return', false);
-
-                        case 29:
-                        case 'end':
-                            return _context5.stop();
-                    }
+                        }
+                        _i = 0, _a = this._extensions;
+                        _b.label = 2;
+                    case 2:
+                        if (!(_i < _a.length)) return [3 /*break*/, 5];
+                        extName = _a[_i];
+                        jsFile = filepath + extName;
+                        return [4 /*yield*/, utils_1.tryFStat(jsFile)];
+                    case 3:
+                        r2 = _b.sent();
+                        if (r2 && r2.isFile()) {
+                            return [2 /*return*/, jsFile];
+                        }
+                        _b.label = 4;
+                    case 4:
+                        _i++;
+                        return [3 /*break*/, 2];
+                    case 5:
+                        if (!fileIsDir) return [3 /*break*/, 10];
+                        return [4 /*yield*/, this._readPackageJson(path.join(filepath, 'package.json'))
+                            // debug("packageJson in %o: %o", filepath, packageJson)
+                        ];
+                    case 6:
+                        packageJson = _b.sent();
+                        if (!packageJson) return [3 /*break*/, 8];
+                        return [4 /*yield*/, this._tryFile(path.join(filepath, packageJson.main || 'index'))];
+                    case 7: return [2 /*return*/, _b.sent()];
+                    case 8:
+                        dirIndexJs = path.join(filepath, 'index.js');
+                        return [4 /*yield*/, utils_1.tryFStat(dirIndexJs)];
+                    case 9:
+                        r3 = _b.sent();
+                        if (r3 && r3.isFile()) {
+                            return [2 /*return*/, dirIndexJs];
+                        }
+                        _b.label = 10;
+                    case 10: return [2 /*return*/, ''];
                 }
-            }, _callee5, _this4);
-        }))();
-    }
-});
+            });
+        });
+    };
+    NodeModuleResolver.prototype._readPackageJson = function (jsonPath) {
+        var _this = this;
+        return this._packageJsonCache._remember(jsonPath, function () { return __awaiter(_this, void 0, void 0, function () {
+            var data;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, utils_1.tryReadJsonFileContent(jsonPath)
+                        // return data
+                    ];
+                    case 1:
+                        data = _a.sent();
+                        // return data
+                        return [2 /*return*/, { main: data ? data.main : undefined }];
+                }
+            });
+        }); });
+    };
+    NodeModuleResolver.prototype._compileAlias = function (aliases) {
+        if (!aliases) {
+            return { resolveAll: function (x) { return x; } };
+        }
+        var firstCharCodes = {};
+        var r = [];
+        var reExp = [];
+        Object.keys(aliases).forEach(function (aliasName) {
+            var aliasNameLen = aliasName.length;
+            var realName = aliases[aliasName];
+            var item = {
+                aliasName: aliasName,
+                aliasNameLen: aliasNameLen,
+                search: aliasName,
+                searchLen: aliasNameLen,
+                replacement: realName,
+                isFullMatch: false,
+            };
+            if (aliasName[aliasNameLen - 1] === '$') {
+                item.search = aliasName.substr(0, aliasNameLen - 1);
+                item.searchLen = item.search.length;
+                item.isFullMatch = true;
+            }
+            firstCharCodes[aliasName.charCodeAt(0)] = true;
+            r.push(item);
+        });
+        // sort by alias name length DESC
+        r = r.sort(function (a, b) { return b.aliasNameLen - a.aliasNameLen; });
+        var resolveOnce = function (x) {
+            if (!firstCharCodes[x.charCodeAt(0)]) {
+                return x;
+            }
+            var xLen = x.length;
+            for (var _i = 0, r_1 = r; _i < r_1.length; _i++) {
+                var item = r_1[_i];
+                if (item.searchLen < xLen) {
+                    if (!item.isFullMatch && item.search === x.substr(0, item.searchLen)) {
+                        return item.replacement + x.substr(item.searchLen);
+                    } // else: no match
+                }
+                else if (item.searchLen === xLen) {
+                    if (item.search === x) {
+                        return item.replacement;
+                    } // else: no match
+                } // else: no match
+            }
+            return x;
+        };
+        var resolveAll = function (x, maxDepth) {
+            if (maxDepth === void 0) { maxDepth = 10; }
+            if (maxDepth <= 0) {
+                throw new Error("max depth reached when resolving alias for " + x);
+            }
+            var y = resolveOnce(x);
+            if (y !== x) {
+                return resolveAll(y, maxDepth - 1);
+            }
+            return y;
+        };
+        r.forEach(function (item) {
+            item.replacement = resolveAll(item.replacement);
+        });
+        return { resolveAll: resolveAll };
+    };
+    NodeModuleResolver.prototype._expandAlias = function (alias) {
+        var _this = this;
+        return this._aliasCache._remember(alias, function () {
+            return _this._expandAliasNoCache(alias);
+        });
+    };
+    NodeModuleResolver.prototype._expandAliasNoCache = function (alias) {
+        return this._alias.resolveAll(alias);
+    };
+    return NodeModuleResolver;
+}());
+exports.default = NodeModuleResolver;
+// NodeModuleResolver.prototype.resolveModuleFullPathName = decorate(NodeModuleResolver.prototype.resolveModuleFullPathName, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! resolveModuleFullPathName(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! resolveModuleFullPathName(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
+// NodeModuleResolver.prototype._tryFileNoCache = decorate(NodeModuleResolver.prototype._tryFileNoCache, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! _tryFileNoCache(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _tryFileNoCache(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
+// NodeModuleResolver.prototype._tryFile = decorate(NodeModuleResolver.prototype._tryFile, async function(oldFunc, ...args){
+//     debug("!!!!!!!!!!! _tryFile(%o) !!!!!!!!!!!", args)
+//     const res = await oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _tryFile(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
+// NodeModuleResolver.prototype._expandAliasNoCache = decorate(NodeModuleResolver.prototype._expandAliasNoCache, function(oldFunc, ...args){
+//     // debug("!!!!!!!!!!! _expandAlias(%o) !!!!!!!!!!!", args)
+//     const res = oldFunc.apply(this, args)
+//     debug("!!!!!!!!!!! _expandAlias(%o) => %o !!!!!!!!!!!", args, res)
+//     return res
+// })
+function decorate(oldFunc, newFunc) {
+    return function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        return newFunc.call.apply(newFunc, [this, oldFunc].concat(args));
+    };
+}
