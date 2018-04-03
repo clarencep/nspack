@@ -257,14 +257,14 @@ class NSPack {
             entryModule.bundle.html = {
                 valid: htmlValid,
                 outputSource: html.sourceCode,
-                outputSize: html && html.sourceCode ? html.sourceCode.length : 0,
+                outputSize: htmlValid ? html.sourceCode.length : 0,
                 hash: htmlHash,
                 outputName: htmlOutputName,
             };
             yield Promise.all([
                 this._outputFile(jsModule.outputName, jsModule.outputSource, entryModule, 'js'),
                 this._outputFile(cssModule.outputName, cssModule.outputSource, entryModule, 'css'),
-                this._outputFile(htmlOutputName, html, entryModule, 'html'),
+                this._outputFile(htmlOutputName, html.sourceCode, entryModule, 'html'),
             ]);
             entryModule.processed = true;
             return entryModule;
