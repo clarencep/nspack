@@ -12,11 +12,9 @@ import {
     sleep,
     tryFStat,
     tryReadJsonFileContent,
-    readFile,
     serial,
     parallel,
     parallelLimit,
-    extractDefault,
 } from './utils'
 
 import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult } from './nspack-interface';
@@ -729,14 +727,6 @@ export default class NSPack implements Packer {
         }
 
         return hasOneUpdated
-    }
-}
-
-
-function makeSourceFileReaderFunc(filepath, encoding='utf8'): EntryResolver{
-    return () => {
-        return readFile(filepath, encoding)
-                 .then(data => ({filePath: filepath, sourceCode: data}))
     }
 }
 

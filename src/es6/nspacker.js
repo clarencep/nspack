@@ -678,12 +678,6 @@ class NSPack {
     }
 }
 exports.default = NSPack;
-function makeSourceFileReaderFunc(filepath, encoding = 'utf8') {
-    return () => {
-        return utils_1.readFile(filepath, encoding)
-            .then(data => ({ filePath: filepath, sourceCode: data }));
-    };
-}
 function buildJsBundleCode(modules, entryModuleId = 0) {
     const modulesCodes = [];
     for (let i = 0, n = modules.length; i < n; i++) {
