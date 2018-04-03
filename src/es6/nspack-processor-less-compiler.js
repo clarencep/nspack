@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,8 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import LessModuleResolver from './less-module-resolver';
-import * as path from 'path';
+Object.defineProperty(exports, "__esModule", { value: true });
+const less_module_resolver_1 = require("./less-module-resolver");
+const path = require("path");
 const debug = require('debug')('nspack');
 const less = require('less');
 var FragmentType;
@@ -16,11 +18,11 @@ var FragmentType;
     FragmentType[FragmentType["ImportStatement"] = 2] = "ImportStatement";
 })(FragmentType || (FragmentType = {}));
 const importRegex = /@import ["']([^"']*?)["'];/g; // todo: escape string??
-export default function (module, packer) {
+function default_1(module, packer) {
     return __awaiter(this, void 0, void 0, function* () {
         module.builtType = 'css';
         if (!packer._lessModuleResolver) {
-            packer._lessModuleResolver = new LessModuleResolver(packer._config.resolve);
+            packer._lessModuleResolver = new less_module_resolver_1.default(packer._config.resolve);
         }
         const source = module.source + '';
         const fragments = splitLessSource(source);
@@ -30,6 +32,7 @@ export default function (module, packer) {
         module.builtSource = builtFragments.join("");
     });
 }
+exports.default = default_1;
 function splitLessSource(source) {
     const fragments = [];
     importRegex.lastIndex = 0;

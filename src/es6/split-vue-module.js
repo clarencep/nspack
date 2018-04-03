@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,11 +7,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 // <style lang="less">
 // [0] => `lang="less"`
 // [1] => `less`
 const styleLangRe = /lang=['"]?([a-zA-Z0-9]+)['"]?/;
-export default function splitVueModule(vueModule, packer) {
+function splitVueModule(vueModule, packer) {
     return __awaiter(this, void 0, void 0, function* () {
         const vueSource = vueModule.source + '';
         const templateText = searchTextAroundTag('template', vueSource);
@@ -70,6 +72,7 @@ export default function splitVueModule(vueModule, packer) {
         return { template, script, style };
     });
 }
+exports.default = splitVueModule;
 // vueContent = "<template>This is a template</template>\n<script>export default {}</script>\n<style lang='less'>.ff{}</style>"
 // searchTextAroundTag("template", vueContent)
 // searchTextAroundTag("script", vueContent)

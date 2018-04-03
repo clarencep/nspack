@@ -1,6 +1,8 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const vueTplCompiler = require('vue-template-compiler');
 const transpile = require('vue-template-es2015-compiler');
-export default function (module, packer) {
+function default_1(module, packer) {
     const res = vueTplCompiler.compile(module.source + '');
     if (res.errors.length > 0) {
         throw new Error(`Failed to compile vue template ${module.fullPathName}: ${res.errors.join("\n")}`);
@@ -17,6 +19,7 @@ export default function (module, packer) {
     module.builtSource = lines.join("\n");
     module.builtType = 'js';
 }
+exports.default = default_1;
 function toFunction(funcBody) {
     return transpile(`function render(){${funcBody}}`);
 }

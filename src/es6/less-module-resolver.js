@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,13 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as path from "path";
-import Cache from './cache';
-import { tryFStat } from "./utils";
+Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
+const cache_1 = require("./cache");
+const utils_1 = require("./utils");
 // const debug = require('debug')('nspack')
-export default class LessModuleResolver {
+class LessModuleResolver {
     constructor(options) {
-        this._cache = new Cache();
+        this._cache = new cache_1.default();
     }
     resolveModuleFullPathName(moduleName, baseDir) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -35,19 +37,19 @@ export default class LessModuleResolver {
     }
     _tryFile(filepath) {
         return __awaiter(this, void 0, void 0, function* () {
-            const r = yield tryFStat(filepath);
+            const r = yield utils_1.tryFStat(filepath);
             if (r && r.isFile()) {
                 return filepath;
             }
             // try foo => foo.less
             const lessFile = filepath + '.less';
-            const r2 = yield tryFStat(lessFile);
+            const r2 = yield utils_1.tryFStat(lessFile);
             if (r2 && r2.isFile()) {
                 return lessFile;
             }
             // try foo => foo.css
             const cssFile = filepath + '.css';
-            const r3 = yield tryFStat(cssFile);
+            const r3 = yield utils_1.tryFStat(cssFile);
             if (r3 && r3.isFile()) {
                 return cssFile;
             }
@@ -55,3 +57,4 @@ export default class LessModuleResolver {
         });
     }
 }
+exports.default = LessModuleResolver;

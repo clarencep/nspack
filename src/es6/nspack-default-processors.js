@@ -1,32 +1,34 @@
-import jsModuleProcessor from './nspack-processor-js-module';
-import jsonProcessor from './nspack-processor-json';
-import cssOptimizerProcessor from './nspack-processor-css-optimizer';
-import lessCompilerProcessor from './nspack-processor-less-compiler';
-import * as dataUrlProcessor from './nspack-processor-data-url';
-import vueModuleProcessor from './nspack-processor-vue-module';
-import vueTemplateCompiler from './nspack-processor-vue-template-compiler';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const nspack_processor_js_module_1 = require("./nspack-processor-js-module");
+const nspack_processor_json_1 = require("./nspack-processor-json");
+const nspack_processor_css_optimizer_1 = require("./nspack-processor-css-optimizer");
+const nspack_processor_less_compiler_1 = require("./nspack-processor-less-compiler");
+const dataUrlProcessor = require("./nspack-processor-data-url");
+const nspack_processor_vue_module_1 = require("./nspack-processor-vue-module");
+const nspack_processor_vue_template_compiler_1 = require("./nspack-processor-vue-template-compiler");
 const map = {
     js: [
-        jsModuleProcessor,
+        nspack_processor_js_module_1.default,
     ],
     json: [
-        jsonProcessor,
+        nspack_processor_json_1.default,
     ],
     css: [
-        cssOptimizerProcessor,
+        nspack_processor_css_optimizer_1.default,
     ],
     less: [
-        lessCompilerProcessor,
-        cssOptimizerProcessor,
+        nspack_processor_less_compiler_1.default,
+        nspack_processor_css_optimizer_1.default,
     ],
     vue: [
-        vueModuleProcessor,
+        nspack_processor_vue_module_1.default,
     ],
     text: [
         textProcessor,
     ],
     'vue.tpl': [
-        vueTemplateCompiler,
+        nspack_processor_vue_template_compiler_1.default,
     ],
     bmp: [dataUrlProcessor.withMimeType('image/bmp')],
     png: [dataUrlProcessor.withMimeType('image/png')],
@@ -36,7 +38,7 @@ const map = {
     webp: [dataUrlProcessor.withMimeType('image/webp')],
     ico: [dataUrlProcessor.withMimeType('image/x-icon')],
 };
-export default map;
+exports.default = map;
 function textProcessor(module, packer) {
     module.builtType = 'js';
     module.builtSource = `module.exports = ${JSON.stringify(module.source)}`;

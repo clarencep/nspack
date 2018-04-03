@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,8 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as fs from "fs";
-export function readFile(filename, encoding = null) {
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs = require("fs");
+function readFile(filename, encoding = null) {
     return new Promise((resolve, reject) => {
         fs.readFile(filename, { encoding: encoding }, function (err, data) {
             if (err) {
@@ -19,7 +21,8 @@ export function readFile(filename, encoding = null) {
         });
     });
 }
-export function tryFStat(file) {
+exports.readFile = readFile;
+function tryFStat(file) {
     return new Promise(resolve => {
         fs.stat(file, (err, stats) => {
             if (err) {
@@ -31,7 +34,8 @@ export function tryFStat(file) {
         });
     });
 }
-export function tryReadFileContent(file, encoding = 'utf8') {
+exports.tryFStat = tryFStat;
+function tryReadFileContent(file, encoding = 'utf8') {
     return new Promise(resolve => {
         fs.readFile(file, encoding, (err, content) => {
             if (err) {
@@ -43,7 +47,8 @@ export function tryReadFileContent(file, encoding = 'utf8') {
         });
     });
 }
-export function tryReadJsonFileContent(file, encoding = 'utf8') {
+exports.tryReadFileContent = tryReadFileContent;
+function tryReadJsonFileContent(file, encoding = 'utf8') {
     return __awaiter(this, void 0, void 0, function* () {
         return new Promise(resolve => {
             fs.readFile(file, encoding, (err, content) => {
@@ -62,20 +67,24 @@ export function tryReadJsonFileContent(file, encoding = 'utf8') {
         });
     });
 }
-export function humanizeSize(sizeInBytes) {
+exports.tryReadJsonFileContent = tryReadJsonFileContent;
+function humanizeSize(sizeInBytes) {
     return (+sizeInBytes / 1000).toFixed(1).replace(/\.0+$/, '') + 'kb';
 }
-export function sleep(timeout) {
+exports.humanizeSize = humanizeSize;
+function sleep(timeout) {
     return new Promise(resolve => setTimeout(resolve, timeout));
 }
-export function serial(runnables) {
+exports.sleep = sleep;
+function serial(runnables) {
     return __awaiter(this, void 0, void 0, function* () {
         for (let run of runnables) {
             yield run();
         }
     });
 }
-export function parallel(runnables) {
+exports.serial = serial;
+function parallel(runnables) {
     return __awaiter(this, void 0, void 0, function* () {
         const jobs = [];
         for (let run of runnables) {
@@ -84,7 +93,8 @@ export function parallel(runnables) {
         yield Promise.all(jobs);
     });
 }
-export function parallelLimit(runnables, limitNum = 10) {
+exports.parallel = parallel;
+function parallelLimit(runnables, limitNum = 10) {
     return __awaiter(this, void 0, void 0, function* () {
         const runnablesArr = [];
         for (let run of runnables) {
@@ -115,11 +125,13 @@ export function parallelLimit(runnables, limitNum = 10) {
         });
     });
 }
+exports.parallelLimit = parallelLimit;
 function runJobAsPromise(run) {
     return __awaiter(this, void 0, void 0, function* () {
         return run();
     });
 }
-export function extractDefault(module) {
+function extractDefault(module) {
     return module ? (module.__esModule ? module.default : module) : undefined;
 }
+exports.extractDefault = extractDefault;

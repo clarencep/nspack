@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,11 +7,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import splitVueModule from './split-vue-module';
-export default function (module, packer) {
+Object.defineProperty(exports, "__esModule", { value: true });
+const split_vue_module_1 = require("./split-vue-module");
+function default_1(module, packer) {
     return __awaiter(this, void 0, void 0, function* () {
         module.builtType = 'js';
-        const { template, script, style } = yield splitVueModule(module, packer);
+        const { template, script, style } = yield split_vue_module_1.default(module, packer);
         const lines = [];
         if (style) {
             module.dependencies.push(style);
@@ -33,3 +35,4 @@ export default function (module, packer) {
         module.builtSource = lines.join("\n");
     });
 }
+exports.default = default_1;

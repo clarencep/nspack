@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,9 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { readFile } from './utils';
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("./utils");
 const extend = Object.assign;
-export default class NSPackEntryModule {
+class NSPackEntryModule {
     constructor(entryName, cfg, packer) {
         this.needUpdate = false;
         this._packer = () => packer;
@@ -58,6 +60,7 @@ export default class NSPackEntryModule {
         });
     }
 }
+exports.default = NSPackEntryModule;
 function entryConfigItemToEntryContentReader(cfg) {
     if (!cfg) {
         return (entry) => ({ filePath: null, sourceCode: null });
@@ -84,7 +87,7 @@ function entryConfigItemToEntryContentReader(cfg) {
 }
 function sanitizeEntryContent(entry) {
     if (entry.filePath && entry.sourceCode === undefined) {
-        return readFile(entry.filePath)
+        return utils_1.readFile(entry.filePath)
             .then(data => {
             entry.sourceCode = data;
             return entry;

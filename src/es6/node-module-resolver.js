@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,19 +7,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as path from "path";
-import Cache from './cache';
-import { tryFStat, tryReadJsonFileContent } from "./utils";
+Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
+const cache_1 = require("./cache");
+const utils_1 = require("./utils");
 const pathSepRe = /[\\\/]/;
-export default class NodeModuleResolver {
+class NodeModuleResolver {
     constructor(options) {
         options = options || {};
         this._extensions = options.extensions || ['.js'];
         this._alias = this._compileAlias(options.alias);
-        this._resolveCache = new Cache();
-        this._tryFileCache = new Cache();
-        this._aliasCache = new Cache();
-        this._packageJsonCache = new Cache();
+        this._resolveCache = new cache_1.default();
+        this._tryFileCache = new cache_1.default();
+        this._aliasCache = new cache_1.default();
+        this._packageJsonCache = new cache_1.default();
     }
     resolveModuleFullPathName(moduleName, baseDir) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -61,7 +63,7 @@ export default class NodeModuleResolver {
     _tryFileNoCache(filepath) {
         return __awaiter(this, void 0, void 0, function* () {
             let fileIsDir = false;
-            const r = yield tryFStat(filepath);
+            const r = yield utils_1.tryFStat(filepath);
             if (r) {
                 if (r.isFile()) {
                     return filepath;
@@ -72,7 +74,7 @@ export default class NodeModuleResolver {
             for (let extName of this._extensions) {
                 // try jquery => jquery.js
                 const jsFile = filepath + extName;
-                const r2 = yield tryFStat(jsFile);
+                const r2 = yield utils_1.tryFStat(jsFile);
                 if (r2 && r2.isFile()) {
                     return jsFile;
                 }
@@ -87,7 +89,7 @@ export default class NodeModuleResolver {
                 else {
                     // try index.js in the directory
                     const dirIndexJs = path.join(filepath, 'index.js');
-                    const r3 = yield tryFStat(dirIndexJs);
+                    const r3 = yield utils_1.tryFStat(dirIndexJs);
                     if (r3 && r3.isFile()) {
                         return dirIndexJs;
                     }
@@ -98,7 +100,7 @@ export default class NodeModuleResolver {
     }
     _readPackageJson(jsonPath) {
         return this._packageJsonCache._remember(jsonPath, () => __awaiter(this, void 0, void 0, function* () {
-            const data = yield tryReadJsonFileContent(jsonPath);
+            const data = yield utils_1.tryReadJsonFileContent(jsonPath);
             // return data
             return { main: data ? data.main : undefined };
         }));
@@ -174,6 +176,7 @@ export default class NodeModuleResolver {
         return this._alias.resolveAll(alias);
     }
 }
+exports.default = NodeModuleResolver;
 // NodeModuleResolver.prototype.resolveModuleFullPathName = decorate(NodeModuleResolver.prototype.resolveModuleFullPathName, async function(oldFunc, ...args){
 //     debug("!!!!!!!!!!! resolveModuleFullPathName(%o) !!!!!!!!!!!", args)
 //     const res = await oldFunc.apply(this, args)

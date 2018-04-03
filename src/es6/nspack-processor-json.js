@@ -1,4 +1,6 @@
-export default function (module, packer) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function default_1(module, packer) {
     module.builtType = 'js';
     try {
         JSON.parse(module.source + '');
@@ -8,3 +10,4 @@ export default function (module, packer) {
     }
     module.builtSource = 'module.exports = (' + module.source + ')';
 }
+exports.default = default_1;

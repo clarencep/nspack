@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,9 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { humanizeSize } from "./utils";
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("./utils");
 const extend = Object.assign;
-export default {
+exports.default = {
     defaultInstance: getDefaultUglifier,
     defaultConfig: getDefaultConfig,
     withConfig: config => new OutputUglifier(config),
@@ -119,7 +121,7 @@ class OutputUglifier {
                 throw res.error;
             }
             outputFile.minimizedContent = res.code;
-            console.log(`minfied ${outputFile.filePath}, reduced size from ${humanizeSize(outputFile.content.length)} to ${humanizeSize(res.code.length)}`);
+            console.log(`minfied ${outputFile.filePath}, reduced size from ${utils_1.humanizeSize(outputFile.content.length)} to ${utils_1.humanizeSize(res.code.length)}`);
             yield outputFile.write({
                 filePath: outputFile.minimizedFilePath,
                 content: res.code,

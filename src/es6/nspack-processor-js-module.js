@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,9 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const debug = require('debug')('nspack');
 const jsVarRegex = /^[a-zA-Z0-9_$]+$/;
-export default function (module, packer) {
+function default_1(module, packer) {
     return __awaiter(this, void 0, void 0, function* () {
         packer.debugLevel > 1 && debug("process module %o", module.fullPathName);
         module.builtType = 'js';
@@ -71,6 +73,7 @@ export default function (module, packer) {
         yield Promise.all(dependenciesProcesses);
     });
 }
+exports.default = default_1;
 function getJsLinesRegexHandlers(resolveModuleId) {
     return [
         // todo: how to remove comments, but don't hurt URL string and RegExp??

@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,18 +7,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as fs from 'fs';
-import * as path from 'path';
-import NodeModuleResolver from './node-module-resolver';
-import NSPackBuiltResult from './nspack-built-result';
-import NSPackModule from './nspack-module';
-import { sleep, tryReadJsonFileContent, readFile, serial, parallelLimit, } from './utils';
-import { sanitizeAndFillConfig } from './nspacker-config';
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs = require("fs");
+const path = require("path");
+const node_module_resolver_1 = require("./node-module-resolver");
+const nspack_built_result_1 = require("./nspack-built-result");
+const nspack_module_1 = require("./nspack-module");
+const utils_1 = require("./utils");
+const nspacker_config_1 = require("./nspacker-config");
 const babel = require('babel-core');
 const md5 = require('md5');
 const debug = require('debug')('nspack');
 const extend = Object.assign;
-export default class NSPack {
+class NSPack {
     constructor(config) {
         this._fs = fs;
         this._builtTimes = 0;
@@ -27,9 +29,9 @@ export default class NSPack {
         this._modulesByFullPathName = {};
         this._entries = {};
         this._isBuilding = false;
-        sanitizeAndFillConfig.call(this, config);
-        this._result = new NSPackBuiltResult(this);
-        this._nodeModuleResolver = new NodeModuleResolver(this._config.resolve);
+        nspacker_config_1.sanitizeAndFillConfig.call(this, config);
+        this._result = new nspack_built_result_1.default(this);
+        this._nodeModuleResolver = new node_module_resolver_1.default(this._config.resolve);
     }
     build() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -43,13 +45,13 @@ export default class NSPack {
                     const hasUpdated = yield this._checkModulesUpdates();
                     if (!hasUpdated) {
                         this.debugLevel > 10 && debug("modules not updated, so don't build");
-                        this._result = new NSPackBuiltResult(this);
+                        this._result = new nspack_built_result_1.default(this);
                         this._result.updated = false;
                         this._isBuilding = false;
                         return this._result;
                     }
                     this.debugLevel > 10 && debug("modules updated, so do build");
-                    this._result = new NSPackBuiltResult(this);
+                    this._result = new nspack_built_result_1.default(this);
                 }
                 this._builtTimes++;
                 this.buildBeginAt = new Date();
@@ -100,7 +102,7 @@ export default class NSPack {
                     yield doneCb(e, null);
                 }
                 const spentTimeMs = Date.now() - beginTime;
-                yield sleep(Math.max(1, this._config.watchInterval - spentTimeMs));
+                yield utils_1.sleep(Math.max(1, this._config.watchInterval - spentTimeMs));
             }
         });
     }
@@ -156,7 +158,7 @@ export default class NSPack {
     }
     _buildFromEntries_serial() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield serial(Object.values(this._entries)
+            yield utils_1.serial(Object.values(this._entries)
                 .filter((x) => !x.processed || x.needUpdate)
                 .map(module => () => this._buildEntryModule(module)
                 .then(module => {
@@ -168,7 +170,7 @@ export default class NSPack {
     }
     _buildFromEntries_parrell() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield parallelLimit(Object.values(this._entries)
+            yield utils_1.parallelLimit(Object.values(this._entries)
                 .filter((x) => !x.processed || x.needUpdate)
                 .map(module => () => this._buildEntryModule(module)
                 .then(module => {
@@ -373,7 +375,7 @@ export default class NSPack {
         if (moduleFile in this._modulesByFullPathName) {
             return this._modulesByFullPathName[moduleFile];
         }
-        const module = new NSPackModule({
+        const module = new nspack_module_1.default({
             id: this._nextModuleId++,
             baseDir: '',
             name: moduleName,
@@ -420,11 +422,11 @@ export default class NSPack {
             }
             else if (typeof this._config.babelrc === 'string') {
                 this._babelrcFile = this._config.babelrc;
-                return yield tryReadJsonFileContent(this._babelrcFile);
+                return yield utils_1.tryReadJsonFileContent(this._babelrcFile);
             }
             else if (this._config.babelrc === true || this._config.babelrc === undefined) {
                 this._babelrcFile = '.babelrc';
-                return this._config.babelrc = yield tryReadJsonFileContent(this._babelrcFile);
+                return this._config.babelrc = yield utils_1.tryReadJsonFileContent(this._babelrcFile);
             }
             else {
                 return this._config.babelrc;
@@ -581,7 +583,7 @@ export default class NSPack {
                 this._modulesByFullPathName[module.fullPathName].fresh = false;
                 return this._modulesByFullPathName[module.fullPathName];
             }
-            module = new NSPackModule(module, this);
+            module = new nspack_module_1.default(module, this);
             module.fresh = true;
             module.id = this._nextModuleId++;
             this._modules[module.id] = module;
@@ -675,9 +677,10 @@ export default class NSPack {
         });
     }
 }
+exports.default = NSPack;
 function makeSourceFileReaderFunc(filepath, encoding = 'utf8') {
     return () => {
-        return readFile(filepath, encoding)
+        return utils_1.readFile(filepath, encoding)
             .then(data => ({ filePath: filepath, sourceCode: data }));
     };
 }

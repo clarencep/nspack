@@ -1,4 +1,6 @@
-export default function cb2p(f) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function cb2p(f) {
     return function (...args) {
         const _this = this;
         return new Promise((resolve, reject) => {
@@ -13,3 +15,4 @@ export default function cb2p(f) {
         });
     };
 }
+exports.default = cb2p;

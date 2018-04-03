@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -6,12 +7,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { tryFStat, readFile } from './utils';
-import * as path from 'path';
+Object.defineProperty(exports, "__esModule", { value: true });
+const utils_1 = require("./utils");
+const path = require("path");
 const extend = Object.assign;
 const debug = require('debug')('nspack');
 const textFileTypesRe = /^(txt|text|js|jsx|css|less|json|htm|html|vue)$/;
-export default class NSPackModule {
+class NSPackModule {
     constructor(attributes, packer) {
         this.processed = false;
         this.cssExtracted = false;
@@ -45,7 +47,7 @@ export default class NSPackModule {
             if ((this.needUpdate || this.source === undefined) && !this.isExternal && !this.isInternal) {
                 this.packer.debugLevel > 1 && debug("read module source from file: %o, module: %o", this.fullPathName, this);
                 const readFileAt = Date.now();
-                this.source = yield readFile(this.fullPathName, this.encoding);
+                this.source = yield utils_1.readFile(this.fullPathName, this.encoding);
                 this.sourceUpdatedAt = readFileAt;
                 return;
             }
@@ -54,7 +56,7 @@ export default class NSPackModule {
     _checkIfNeedUpdate0() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.isInternal && !this.isExternal) {
-                const stat = yield tryFStat(this.fullPathName);
+                const stat = yield utils_1.tryFStat(this.fullPathName);
                 if (!stat || !stat.isFile() || +stat.mtimeMs > this.sourceUpdatedAt) {
                     this.packer.debugLevel > 3 && debug("source updated: %o, at %o", this.fullPathName, stat);
                     return this.needUpdate = true;
@@ -77,3 +79,4 @@ export default class NSPackModule {
         return textFileTypesRe.test(type);
     }
 }
+exports.default = NSPackModule;

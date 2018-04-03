@@ -1,15 +1,17 @@
-import NSPackEntryModule from "./nspack-entry-module";
-import * as path from 'path';
-import defaultModuleProcessors from './nspack-default-processors';
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const nspack_entry_module_1 = require("./nspack-entry-module");
+const path = require("path");
+const nspack_default_processors_1 = require("./nspack-default-processors");
 const extend = Object.assign;
-export function sanitizeAndFillConfig(config) {
+function sanitizeAndFillConfig(config) {
     const r = this._config = Object.assign({}, config);
     if (!r.entryBase) {
         r.entryBase = process.cwd();
     }
     r.entry = Object.assign({}, config.entry);
     for (let entryName of Object.keys(r.entry)) {
-        this._entries[entryName] = new NSPackEntryModule(entryName, r.entry[entryName], this);
+        this._entries[entryName] = new nspack_entry_module_1.default(entryName, r.entry[entryName], this);
     }
     if (!r.outputBase) {
         r.outputBase = path.join(process.cwd(), 'dist');
@@ -29,7 +31,7 @@ export function sanitizeAndFillConfig(config) {
             '@': r.entryBase,
         },
     }, r.resolve || {});
-    r.moduleProcessors = Object.assign({}, defaultModuleProcessors, r.moduleProcessors);
+    r.moduleProcessors = Object.assign({}, nspack_default_processors_1.default, r.moduleProcessors);
     r.externals = r.externals || {};
     r.hooks = extend({
         outputFile: noop,
@@ -41,4 +43,5 @@ export function sanitizeAndFillConfig(config) {
     // babelrc keeps no changed.
     return r;
 }
+exports.sanitizeAndFillConfig = sanitizeAndFillConfig;
 function noop(...args) { }

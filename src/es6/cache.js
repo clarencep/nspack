@@ -1,4 +1,6 @@
-export default class Cache {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class Cache {
     constructor() {
         this._cache = {};
     }
@@ -15,3 +17,4 @@ export default class Cache {
         return this._cache[cacheKey] = loadFunc();
     }
 }
+exports.default = Cache;
