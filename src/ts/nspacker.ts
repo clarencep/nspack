@@ -211,21 +211,21 @@ export default class NSPack implements Packer {
         )
     }
     async _buildEntryModule(entryModule: NSPackEntryModule){
-        this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name)
+        const baseDir = entryModule.baseDir
 
-        const baseDir = this._config.entryBase
-        entryModule.entry = {name: entryModule.name, baseDir: baseDir}
+        this.debugLevel > 0 && debug(`building entry module %o...(baseDir: %o)`, entryModule.name, baseDir)
+
         const resolvingJsModule = 
                 entryModule.loadJsSource()
                 .then(({sourceCode, filePath}) => 
                     this._addModuleIfNotExists({
                         name: entryModule.name + '.js',
                         baseDir: baseDir,
-                        fullPathName: filePath || path.join(baseDir, entryModule.name + '.js'),
+                        fullPathName: filePath ? path.resolve(baseDir, filePath) : path.join(baseDir, entryModule.name + '.js'),
                         source: sourceCode,
-                        libName: entryModule.libName === undefined ? entryModule.name.replace(/\\/g, '/') : entryModule.libName,
+                        libName: entryModule.libName,
                         libTarget: entryModule.libTarget,
-                        amdExecOnDef: entryModule.amdExecOnDef === undefined ? true : !!entryModule.amdExecOnDef,
+                        amdExecOnDef: entryModule.amdExecOnDef,
                         isInternal: !filePath || (!sourceCode && sourceCode !== ''),
                     }))
                 .then(module => this._processModule(module))
@@ -243,7 +243,7 @@ export default class NSPack implements Packer {
                     this._addModuleIfNotExists({
                         name: entryModule.name + '.css',
                         baseDir: baseDir,
-                        fullPathName: filePath || path.join(baseDir, entryModule.name + '.css'),
+                        fullPathName: filePath ? path.resolve(baseDir, filePath) : path.join(baseDir, entryModule.name + '.css'),
                         source: sourceCode,
                         isInternal: !filePath || (!sourceCode && sourceCode !== ''),
                     }))
@@ -532,8 +532,8 @@ export default class NSPack implements Packer {
     _resolveOutputFile(filename: string): string{
         return path.resolve(this._config.outputBase, filename)
     }
-    async _outputFile(outputName, content, entryModule, outputType){
-        if (content === undefined){
+    async _outputFile(outputName: string, content: string|Buffer|null, entryModule, outputType){
+        if (!outputName || !isValidFileContent(content)){
             return
         }
 
@@ -547,8 +547,7 @@ export default class NSPack implements Packer {
             content,
             async write(options={}){
                 const t = options ? extend({}, this, options) : this
-                await t.packer._mkdirIfNotExists(t.fileDir)
-                await t.packer._callFsOpAsync('writeFile', t.filePath, t.content, 'utf8')
+                await t.packer._writeOutputFile(t.filePath, t.content, 'utf8')
             }
         }
 
@@ -558,10 +557,10 @@ export default class NSPack implements Packer {
 
         await outputFile.write()
     }
-    async _writeOutputFile(filename, content){
+    async _writeOutputFile(filename, content, encoding='utf8'){
         const filePath = this._resolveOutputFile(filename)
         await this._mkdirIfNotExists(path.dirname(filePath))
-        await this._callFsOpAsync('writeFile', filePath, content, 'utf8')
+        await this._writeFile(filePath, content, encoding)
     }
     async _resolveModule(moduleName, baseDir, resolvingParents){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
@@ -616,7 +615,7 @@ export default class NSPack implements Packer {
     async _addModuleIfNotExists(module){
         if (!('fullPathName' in module)){
             if (module.isInternal || module.isExternal){
-                module.fullPathName = module.file
+                module.fullPathName = path.resolve(module.baseDir, module.file)
                 if (!('relativePath' in module)){
                     module.relativePath = module.file
                 }
@@ -673,25 +672,25 @@ export default class NSPack implements Packer {
             debug("\t\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash)
         }
     }
-    _callFsOpAsync(op, ...args){
+    async _writeFile(filePathName: string, data: string|Buffer, encoding: string): Promise<any>{
         return new Promise((resolve, reject) => {
-            const cb = (err, res) => {
-                if (err) {
+            this._fs.writeFile(filePathName, data, encoding, (err) => {
+                if (err){
+                    console.error(`Error: failed to write to file "${filePathName}", detail: `, err)
                     reject(err)
                 } else {
-                    resolve(res)
+                    resolve()
                 }
-            }
-
-            this._fs[op].apply(this._fs, args.concat([cb]))
+            })
         })
     }
-    async _mkdirIfNotExists(fileDir){
+    async _mkdirIfNotExists(fileDir: string): Promise<any>{
         return new Promise((resolve, reject) => {
             this._fs.stat(fileDir, (err, st) => {
                 if (err){
                     this._fs.mkdir(fileDir, (err: any) => {
                         if (err && err.code !== 'EEXIST'){
+                            console.error(`Error: failed to mkdir "${fileDir}", detail: `, err)
                             reject(err)
                         } else {
                             resolve()
@@ -877,3 +876,7 @@ define([], function(){
 }
 
 function noop(...args){}
+
+function isValidFileContent(content: string|Buffer|null): boolean{
+    return !!content || content === ''
+}

@@ -19,7 +19,7 @@ let defaultUglifier
 
 export type UglifierHandleResult = {code: string, error?: Error, warnings?: string}
 export type UglifierHandler = {
-    handle: ({code: string, options: any}) => UglifierHandleResult,
+    handle: (data: {code: string, options: any}) => UglifierHandleResult,
     options: any,
 }
 
@@ -119,14 +119,14 @@ class OutputUglifier{
 
         if (outputFile.outputType === 'html'){
             const {jsModule, cssModule} = outputFile.entryModule
-            const html = await outputFile.entryModule.loadHtmlSource.call({
-                ...outputFile.entryModule,
-                bundle: {
-                    ...outputFile.entryModule.bundle,
-                    scriptsTags: jsModule.outputSource ? `<script src="/${getMinimizedPath(jsModule.outputName)}"></script>` : '',
-                    stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${getMinimizedPath(cssModule.outputName)}" >` : '',
-                }
-            })
+
+            outputFile.entryModule.bundle =  {
+                ...outputFile.entryModule.bundle,
+                scriptsTags: jsModule.outputSource ? `<script src="/${getMinimizedPath(jsModule.outputName)}"></script>` : '',
+                stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${getMinimizedPath(cssModule.outputName)}" >` : '',
+            }
+
+            const html = await outputFile.entryModule.loadHtmlSource()
 
             outputFile.content = html.sourceCode
         }
@@ -136,7 +136,7 @@ class OutputUglifier{
         }
 
         const res = await handler.handle({
-            code: outputFile.content,
+            code: outputFile.content + '',
             options: handler.options,
         })
 

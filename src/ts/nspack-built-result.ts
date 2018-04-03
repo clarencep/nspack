@@ -30,24 +30,96 @@ export default class NSPackBuiltResult implements BuiltResult {
     }
 
     summary(): string{
-        const r = []
+        const r: string[] = []
         r.push(`Done build. Spent ${this.spentTimeSeconds()}(s)`)
 
+        const tbl: string[][] = []
         for (let module of Object.values(this.modules)){
-            r.push("    " + module.name + ":")
+            tbl.push(['  ' + module.name + ':'])
 
-            module.bundle.script && module.bundle.script.valid && 
-            r.push("        " + module.bundle.script.outputName + ": \t" + humanizeSize(module.bundle.script.outputSize) + "\t" + module.bundle.script.hash.substring(0,4))
+            if (module.bundle.script && module.bundle.script.valid){
+                tbl.push([
+                    '',
+                    module.bundle.script.outputName,
+                    humanizeSize(module.bundle.script.outputSize),
+                    module.bundle.script.hash,
+                ])
+            }
 
-            module.bundle.style && module.bundle.style.valid && 
-            r.push("        " + module.bundle.style.outputName + ": \t" + humanizeSize(module.bundle.style.outputSize) + "\t" + module.bundle.style.hash.substring(0,4))
+            if (module.bundle.style && module.bundle.style.valid){
+                tbl.push([
+                    '',
+                    module.bundle.style.outputName,
+                    humanizeSize(module.bundle.style.outputSize),
+                    module.bundle.style.hash,
+                ])
+            }
 
-            module.bundle.html && module.bundle.html.valid &&
-            r.push("        " + module.bundle.html.outputName + ": \t" + humanizeSize(module.bundle.html.outputSize) + "\t" + module.bundle.html.hash.substring(0,4))
+            if (module.bundle.html && module.bundle.html.valid){
+                tbl.push([
+                    '',
+                    module.bundle.html.outputName,
+                    humanizeSize(module.bundle.html.outputSize),
+                    module.bundle.html.hash,
+                ])
+            }
         }
+
+        r.push(renderTable(tbl))
 
         r.push("")
 
         return r.join("\n")
     }
+}
+
+function renderTable(table: string[][]): string {
+    const r = []
+
+    const maxColsLen = [0, 0, 0, 0]
+    for (let row of table){
+        for (let i = 0; i < row.length; i++) {
+            const cell = row[i]
+            if (cell.length > maxColsLen[i]){
+                maxColsLen[i] = cell.length
+            }
+        }
+    }
+
+    const maxMaxColsLen = [4, 50, 10, 10]
+    for (let i = 0; i < maxMaxColsLen.length; i++){
+        if (maxColsLen[i] > maxMaxColsLen[i]) {
+            maxColsLen[i] = maxMaxColsLen[i]
+        }
+    }
+
+    for (let row of table){
+        if (row.length <= 0){
+            continue
+        }
+
+        if (row.length === 1){
+            r.push(row[0])
+            continue
+        } 
+        
+        r.push(row.map((v, i) => i === 2 ?  padSpaceLeft(v, maxColsLen[i]) : padSpaceRight(v, maxColsLen[i])).join(" "))
+    }
+
+    return r.join("\n")
+}
+
+function padSpaceLeft(v: string, len: number): string{
+    if (v.length >= len) {
+        return v
+    }
+
+    return new Array(len - v.length).fill(' ').join('') + v
+}
+function padSpaceRight(v: string, len: number): string{
+    if (v.length >= len) {
+        return v
+    }
+
+    return v + new Array(len - v.length).fill(' ').join('')
 }

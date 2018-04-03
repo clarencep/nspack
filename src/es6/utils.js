@@ -13,6 +13,7 @@ function readFile(filename, encoding = null) {
     return new Promise((resolve, reject) => {
         fs.readFile(filename, { encoding: encoding }, function (err, data) {
             if (err) {
+                console.error(`Error: failed to read file "${filename}", detail error:`, err);
                 reject(err);
             }
             else {
@@ -26,6 +27,7 @@ function tryFStat(file) {
     return new Promise(resolve => {
         fs.stat(file, (err, stats) => {
             if (err) {
+                console.error(`Warn: failed to try stat file "${file}", detail error:`, err);
                 resolve(false);
             }
             else {
@@ -39,6 +41,7 @@ function tryReadFileContent(file, encoding = 'utf8') {
     return new Promise(resolve => {
         fs.readFile(file, encoding, (err, content) => {
             if (err) {
+                console.error(`Warn: failed to try read file "${file}", detail error:`, err);
                 resolve(false);
             }
             else {
@@ -53,6 +56,7 @@ function tryReadJsonFileContent(file, encoding = 'utf8') {
         return new Promise(resolve => {
             fs.readFile(file, encoding, (err, content) => {
                 if (err) {
+                    console.error(`Warn: failed to try read JSON file "${file}", detail error:`, err);
                     resolve(false);
                 }
                 else {

@@ -104,14 +104,15 @@ class OutputUglifier {
             outputFile.minimizedFilePath = getMinimizedPath(outputFile.filePath);
             if (outputFile.outputType === 'html') {
                 const { jsModule, cssModule } = outputFile.entryModule;
-                const html = yield outputFile.entryModule.loadHtmlSource.call(Object.assign({}, outputFile.entryModule, { bundle: Object.assign({}, outputFile.entryModule.bundle, { scriptsTags: jsModule.outputSource ? `<script src="/${getMinimizedPath(jsModule.outputName)}"></script>` : '', stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${getMinimizedPath(cssModule.outputName)}" >` : '' }) }));
+                outputFile.entryModule.bundle = Object.assign({}, outputFile.entryModule.bundle, { scriptsTags: jsModule.outputSource ? `<script src="/${getMinimizedPath(jsModule.outputName)}"></script>` : '', stylesTags: cssModule.outputSource ? `<link rel="stylesheet" href="/${getMinimizedPath(cssModule.outputName)}" >` : '' });
+                const html = yield outputFile.entryModule.loadHtmlSource();
                 outputFile.content = html.sourceCode;
             }
             if (!outputFile.content) {
                 return;
             }
             const res = yield handler.handle({
-                code: outputFile.content,
+                code: outputFile.content + '',
                 options: handler.options,
             });
             if (res.warnings) {

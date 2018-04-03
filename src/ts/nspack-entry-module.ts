@@ -1,6 +1,7 @@
 import NsPackModule from './nspack-module'
 import { Packer, Module, EntryModule, ModuleBundle, EntryModuleBundle, NewEntryModule, EntryConfig, EntryConfigItem, EntryContentReader, EntryContent, EntrySourceCode, EntryFilePath } from './nspack-interface';
 import { readFile } from './utils';
+import * as path from 'path'
 
 const extend = Object.assign
 
@@ -35,19 +36,28 @@ export default class NSPackEntryModule implements EntryModule{
         this._packer = () => packer
         extend(this, {
             name: entryName,
-            js: entryConfigItemToEntryContentReader(cfg.js),
-            css: entryConfigItemToEntryContentReader(cfg.css),
-            html: entryConfigItemToEntryContentReader(cfg.html)  ,     
+            js: entryConfigItemToEntryContentReader.call(this, cfg.js),
+            css: entryConfigItemToEntryContentReader.call(this, cfg.css),
+            html: entryConfigItemToEntryContentReader.call(this, cfg.html)  ,     
             extractCssFromJs: !!cfg.extractCssFromJs,
             ignoreMissingCss: !!cfg.ignoreMissingCss,
             libName: cfg.libName,
             libTarget: cfg.libTarget,
             amdExecOnDef: cfg.amdExecOnDef === undefined ? true : !!cfg.amdExecOnDef,
         })
+
+        this.entry = {
+            name: entryName,
+            baseDir: this.baseDir,
+        }
     }
 
     get packer(): Packer{
         return this._packer()
+    }
+    
+    get baseDir(){
+        return this.packer._config.entryBase
     }
 
     _checkIfNeedUpdate0(){
@@ -76,24 +86,23 @@ export default class NSPackEntryModule implements EntryModule{
     async _loadSource(reader: EntryContentReader, fileExtName: string): Promise<EntryContent>{
         const data = await reader.call(this, this)
         if (!data.filePath && data.sourceCode){
-            data.filePath = this.name + fileExtName
+            data.filePath = path.resolve(this.baseDir, this.name + fileExtName)
         }
 
         return data
     }
-    
 }
-function entryConfigItemToEntryContentReader(cfg: EntryConfigItem): EntryContentReader {
+function entryConfigItemToEntryContentReader(this: NSPackEntryModule, cfg: EntryConfigItem): EntryContentReader {
     if (!cfg){
         return (entry: EntryModule) => ({filePath: null, sourceCode: null})
     }
 
     if (isEntryFilePath(cfg)){
-        return (entry: EntryModule) => sanitizeEntryContent({filePath: cfg})
+        return (entry: EntryModule) => sanitizeEntryContent.call(this, {filePath: cfg})
     }
 
     if (isEntryContent(cfg)){
-        return (entry: EntryModule) => sanitizeEntryContent(cfg)
+        return (entry: EntryModule) => sanitizeEntryContent.call(this, cfg)
     }
 
     if (typeof cfg === 'function'){
@@ -104,7 +113,7 @@ function entryConfigItemToEntryContentReader(cfg: EntryConfigItem): EntryContent
                          }
 
                          if (isEntryContent(data)){
-                             return sanitizeEntryContent(data)
+                             return sanitizeEntryContent.call(this, data)
                          }
 
                          throw new Error("Invalid type of entry data!")
@@ -114,9 +123,9 @@ function entryConfigItemToEntryContentReader(cfg: EntryConfigItem): EntryContent
     throw new Error("Invalid entry config item!")
 }
 
-function sanitizeEntryContent(entry: EntryContent): EntryContent|Promise<EntryContent>{
+function sanitizeEntryContent(this: NSPackEntryModule, entry: EntryContent): EntryContent|Promise<EntryContent>{
     if (entry.filePath && entry.sourceCode === undefined){
-        return readFile(entry.filePath)
+        return readFile(path.resolve(this.baseDir, entry.filePath))
                     .then(data => {
                         entry.sourceCode = data
                         return entry

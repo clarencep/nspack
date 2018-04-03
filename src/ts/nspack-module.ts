@@ -50,9 +50,13 @@ export default class NSPackModule implements Module {
         this._packer = () => packer
         attributes && extend(this, attributes)
 
+        if (!this.fullPathName){
+            throw new Error("Invalid module -- no fullPathName!")
+        }
+
         if (this.relativePath === undefined){
             this.relativePath = path.relative(
-                this.packer._config.entryBase, 
+                this.entryBase, 
                 this.fullPathName
             )
         }
@@ -73,10 +77,15 @@ export default class NSPackModule implements Module {
 
         this.dependencies = []
         
+        this.packer.debugLevel > 2 && debug("new module: %o", this)
     }
 
     get packer(): Packer{
         return this._packer()
+    }
+
+    get entryBase(): string {
+        return this.packer._config.entryBase
     }
 
     async loadSource(): Promise<void>{

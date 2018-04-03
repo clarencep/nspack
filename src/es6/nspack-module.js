@@ -24,8 +24,11 @@ class NSPackModule {
         this.amdExecOnDef = false;
         this._packer = () => packer;
         attributes && extend(this, attributes);
+        if (!this.fullPathName) {
+            throw new Error("Invalid module -- no fullPathName!");
+        }
         if (this.relativePath === undefined) {
-            this.relativePath = path.relative(this.packer._config.entryBase, this.fullPathName);
+            this.relativePath = path.relative(this.entryBase, this.fullPathName);
         }
         if (this.type === undefined) {
             this.type = path.extname(this.fullPathName).replace(/^./, '').toLowerCase();
@@ -38,9 +41,13 @@ class NSPackModule {
         }
         this.resolvingParentsAndSelf = "\n-- " + this.relativePath + (this.resolvingParents || '');
         this.dependencies = [];
+        this.packer.debugLevel > 2 && debug("new module: %o", this);
     }
     get packer() {
         return this._packer();
+    }
+    get entryBase() {
+        return this.packer._config.entryBase;
     }
     loadSource() {
         return __awaiter(this, void 0, void 0, function* () {

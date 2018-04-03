@@ -183,18 +183,17 @@ class NSPack {
     }
     _buildEntryModule(entryModule) {
         return __awaiter(this, void 0, void 0, function* () {
-            this.debugLevel > 0 && debug(`building entry module %o...`, entryModule.name);
-            const baseDir = this._config.entryBase;
-            entryModule.entry = { name: entryModule.name, baseDir: baseDir };
+            const baseDir = entryModule.baseDir;
+            this.debugLevel > 0 && debug(`building entry module %o...(baseDir: %o)`, entryModule.name, baseDir);
             const resolvingJsModule = entryModule.loadJsSource()
                 .then(({ sourceCode, filePath }) => this._addModuleIfNotExists({
                 name: entryModule.name + '.js',
                 baseDir: baseDir,
-                fullPathName: filePath || path.join(baseDir, entryModule.name + '.js'),
+                fullPathName: filePath ? path.resolve(baseDir, filePath) : path.join(baseDir, entryModule.name + '.js'),
                 source: sourceCode,
-                libName: entryModule.libName === undefined ? entryModule.name.replace(/\\/g, '/') : entryModule.libName,
+                libName: entryModule.libName,
                 libTarget: entryModule.libTarget,
-                amdExecOnDef: entryModule.amdExecOnDef === undefined ? true : !!entryModule.amdExecOnDef,
+                amdExecOnDef: entryModule.amdExecOnDef,
                 isInternal: !filePath || (!sourceCode && sourceCode !== ''),
             }))
                 .then(module => this._processModule(module));
@@ -208,7 +207,7 @@ class NSPack {
                 .then(({ sourceCode, filePath }) => this._addModuleIfNotExists({
                 name: entryModule.name + '.css',
                 baseDir: baseDir,
-                fullPathName: filePath || path.join(baseDir, entryModule.name + '.css'),
+                fullPathName: filePath ? path.resolve(baseDir, filePath) : path.join(baseDir, entryModule.name + '.css'),
                 source: sourceCode,
                 isInternal: !filePath || (!sourceCode && sourceCode !== ''),
             }))
@@ -486,7 +485,7 @@ class NSPack {
     }
     _outputFile(outputName, content, entryModule, outputType) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (content === undefined) {
+            if (!outputName || !isValidFileContent(content)) {
                 return;
             }
             const filePath = this._resolveOutputFile(outputName);
@@ -500,8 +499,7 @@ class NSPack {
                 write(options = {}) {
                     return __awaiter(this, void 0, void 0, function* () {
                         const t = options ? extend({}, this, options) : this;
-                        yield t.packer._mkdirIfNotExists(t.fileDir);
-                        yield t.packer._callFsOpAsync('writeFile', t.filePath, t.content, 'utf8');
+                        yield t.packer._writeOutputFile(t.filePath, t.content, 'utf8');
                     });
                 }
             };
@@ -511,11 +509,11 @@ class NSPack {
             yield outputFile.write();
         });
     }
-    _writeOutputFile(filename, content) {
+    _writeOutputFile(filename, content, encoding = 'utf8') {
         return __awaiter(this, void 0, void 0, function* () {
             const filePath = this._resolveOutputFile(filename);
             yield this._mkdirIfNotExists(path.dirname(filePath));
-            yield this._callFsOpAsync('writeFile', filePath, content, 'utf8');
+            yield this._writeFile(filePath, content, encoding);
         });
     }
     _resolveModule(moduleName, baseDir, resolvingParents) {
@@ -567,7 +565,7 @@ class NSPack {
         return __awaiter(this, void 0, void 0, function* () {
             if (!('fullPathName' in module)) {
                 if (module.isInternal || module.isExternal) {
-                    module.fullPathName = module.file;
+                    module.fullPathName = path.resolve(module.baseDir, module.file);
                     if (!('relativePath' in module)) {
                         module.relativePath = module.file;
                     }
@@ -620,17 +618,19 @@ class NSPack {
             debug("\t\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash);
         }
     }
-    _callFsOpAsync(op, ...args) {
-        return new Promise((resolve, reject) => {
-            const cb = (err, res) => {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    resolve(res);
-                }
-            };
-            this._fs[op].apply(this._fs, args.concat([cb]));
+    _writeFile(filePathName, data, encoding) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                this._fs.writeFile(filePathName, data, encoding, (err) => {
+                    if (err) {
+                        console.error(`Error: failed to write to file "${filePathName}", detail: `, err);
+                        reject(err);
+                    }
+                    else {
+                        resolve();
+                    }
+                });
+            });
         });
     }
     _mkdirIfNotExists(fileDir) {
@@ -640,6 +640,7 @@ class NSPack {
                     if (err) {
                         this._fs.mkdir(fileDir, (err) => {
                             if (err && err.code !== 'EEXIST') {
+                                console.error(`Error: failed to mkdir "${fileDir}", detail: `, err);
                                 reject(err);
                             }
                             else {
@@ -823,3 +824,6 @@ define([], function(){
     }
 }
 function noop(...args) { }
+function isValidFileContent(content) {
+    return !!content || content === '';
+}

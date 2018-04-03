@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("./utils");
+const path = require("path");
 const extend = Object.assign;
 class NSPackEntryModule {
     constructor(entryName, cfg, packer) {
@@ -16,18 +17,25 @@ class NSPackEntryModule {
         this._packer = () => packer;
         extend(this, {
             name: entryName,
-            js: entryConfigItemToEntryContentReader(cfg.js),
-            css: entryConfigItemToEntryContentReader(cfg.css),
-            html: entryConfigItemToEntryContentReader(cfg.html),
+            js: entryConfigItemToEntryContentReader.call(this, cfg.js),
+            css: entryConfigItemToEntryContentReader.call(this, cfg.css),
+            html: entryConfigItemToEntryContentReader.call(this, cfg.html),
             extractCssFromJs: !!cfg.extractCssFromJs,
             ignoreMissingCss: !!cfg.ignoreMissingCss,
             libName: cfg.libName,
             libTarget: cfg.libTarget,
             amdExecOnDef: cfg.amdExecOnDef === undefined ? true : !!cfg.amdExecOnDef,
         });
+        this.entry = {
+            name: entryName,
+            baseDir: this.baseDir,
+        };
     }
     get packer() {
         return this._packer();
+    }
+    get baseDir() {
+        return this.packer._config.entryBase;
     }
     _checkIfNeedUpdate0() {
         // entry module need not this method
@@ -54,7 +62,7 @@ class NSPackEntryModule {
         return __awaiter(this, void 0, void 0, function* () {
             const data = yield reader.call(this, this);
             if (!data.filePath && data.sourceCode) {
-                data.filePath = this.name + fileExtName;
+                data.filePath = path.resolve(this.baseDir, this.name + fileExtName);
             }
             return data;
         });
@@ -66,10 +74,10 @@ function entryConfigItemToEntryContentReader(cfg) {
         return (entry) => ({ filePath: null, sourceCode: null });
     }
     if (isEntryFilePath(cfg)) {
-        return (entry) => sanitizeEntryContent({ filePath: cfg });
+        return (entry) => sanitizeEntryContent.call(this, { filePath: cfg });
     }
     if (isEntryContent(cfg)) {
-        return (entry) => sanitizeEntryContent(cfg);
+        return (entry) => sanitizeEntryContent.call(this, cfg);
     }
     if (typeof cfg === 'function') {
         return (entry) => Promise.resolve(cfg(entry))
@@ -78,7 +86,7 @@ function entryConfigItemToEntryContentReader(cfg) {
                 return { sourceCode: data };
             }
             if (isEntryContent(data)) {
-                return sanitizeEntryContent(data);
+                return sanitizeEntryContent.call(this, data);
             }
             throw new Error("Invalid type of entry data!");
         });
@@ -87,7 +95,7 @@ function entryConfigItemToEntryContentReader(cfg) {
 }
 function sanitizeEntryContent(entry) {
     if (entry.filePath && entry.sourceCode === undefined) {
-        return utils_1.readFile(entry.filePath)
+        return utils_1.readFile(path.resolve(this.baseDir, entry.filePath))
             .then(data => {
             entry.sourceCode = data;
             return entry;
