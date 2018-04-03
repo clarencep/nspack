@@ -615,7 +615,7 @@ export default class NSPack implements Packer {
     async _addModuleIfNotExists(module){
         if (!('fullPathName' in module)){
             if (module.isInternal || module.isExternal){
-                module.fullPathName = path.resolve(module.baseDir, module.file)
+                module.fullPathName = module.file // path.resolve(module.baseDir, module.file)
                 if (!('relativePath' in module)){
                     module.relativePath = module.file
                 }

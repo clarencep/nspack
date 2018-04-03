@@ -565,7 +565,7 @@ class NSPack {
         return __awaiter(this, void 0, void 0, function* () {
             if (!('fullPathName' in module)) {
                 if (module.isInternal || module.isExternal) {
-                    module.fullPathName = path.resolve(module.baseDir, module.file);
+                    module.fullPathName = module.file; // path.resolve(module.baseDir, module.file)
                     if (!('relativePath' in module)) {
                         module.relativePath = module.file;
                     }
