@@ -6,7 +6,7 @@ const NSPackStub = require('./stubs/nspack-stub')
 const debug = require('debug')('test')
 const extend = Object.assign
 
-const defaultModuleProcessors = require('../src/nspack-default-processors')
+const defaultModuleProcessors = require('../src/es6/nspack-default-processors').default
 
 
 const stubModules = {

@@ -6,7 +6,7 @@ const NSPackStub = require('./stubs/nspack-stub')
 const debug = require('debug')('test')
 const extend = Object.assign
 
-const NodeModuleResolver = require('../src/node-module-resolver')
+const NodeModuleResolver = require('../src/es6/node-module-resolver').default
 
 
 const aliasTests = [
