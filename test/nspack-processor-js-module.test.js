@@ -6,7 +6,7 @@ const NSPackStub = require('./stubs/nspack-stub')
 const debug = require('debug')('test')
 const extend = Object.assign
 
-const defaultModuleProcessors = require('../src/nspack-default-processors')
+const defaultModuleProcessors = require('../src/es6/nspack-default-processors').default
 
 
 const stubModules = {
@@ -160,6 +160,34 @@ const foo = __require_module__(${stubModules['bar']})
     {
         inputModule: makeTestModule({
             source: `
+import 'bar'
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__require_module__(${stubModules['bar']})
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
+import'bar'
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__require_module__(${stubModules['bar']})
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
 import foo from 'bar'
 `
         }),
@@ -213,6 +241,44 @@ export default function Hello(){
 __set_esModule_flag__(exports)
 ; exports.default = function Hello(){
     console.log("Hello world!")
+}
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
+export default {
+    foo: 'bar'
+}
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__set_esModule_flag__(exports)
+; exports.default = {
+    foo: 'bar'
+}
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
+export default{
+    foo: 'bar'
+}
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__set_esModule_flag__(exports)
+; exports.default = {
+    foo: 'bar'
 }
 `,
         },

@@ -1,6 +1,6 @@
 const assert = require('power-assert')
 const NSPackStub = require('./stubs/nspack-stub')
-const splitVueModule = require('../src/split-vue-module')
+const splitVueModule = require('../src/es6/split-vue-module').default
 const debug = require('debug')('test')
 const extend = Object.assign
 
