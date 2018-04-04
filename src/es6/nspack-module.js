@@ -16,12 +16,14 @@ const textFileTypesRe = /^(txt|text|js|jsx|css|less|json|htm|html|vue)$/;
 class NSPackModule {
     constructor(attributes, packer) {
         this.processed = false;
-        this.cssExtracted = false;
+        this.processing = false;
         this.isExternal = false;
         this.isInternal = false;
         this.needUpdate = false;
         this.fresh = false;
         this.amdExecOnDef = false;
+        this.cssExtracted = false;
+        this.extractedCss = '';
         this._packer = () => packer;
         attributes && extend(this, attributes);
         if (!this.fullPathName) {

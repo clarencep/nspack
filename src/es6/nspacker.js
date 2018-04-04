@@ -233,7 +233,7 @@ class NSPack {
                 type: 'js',
             }) : '';
             cssModule.valid = !!(cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0));
-            cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule) : undefined;
+            cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule, jsModule) : undefined;
             cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0;
             cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : '';
             cssModule.outputName = cssModule.valid ? this._buildOutputName({
@@ -312,14 +312,14 @@ class NSPack {
             return wrapLibrary(jsModule, transpiledCode);
         });
     }
-    _bundleCssModule(cssModule) {
-        if (cssModule.appendSources && cssModule.appendSources.length > 0) {
-            return (cssModule.builtSource || '') + cssModule.appendSources.join("\n");
+    _bundleCssModule(cssModule, jsModule = null) {
+        if (jsModule && jsModule.extractedCss && jsModule.extractedCss.length > 0) {
+            return cssModule.builtSource + jsModule.extractedCss;
         }
-        return cssModule.builtSource;
+        return cssModule.builtSource + '';
     }
     _extractCssFromJs(jsModule, cssModule) {
-        cssModule.appendSources = cssModule.appendSources || [];
+        const extractedCssArr = [];
         const extracted = {};
         const extractRec = (dependencies) => {
             if (dependencies) {
@@ -327,7 +327,7 @@ class NSPack {
                     if (x.builtType === 'css') {
                         if (!extracted[x.id]) {
                             extracted[x.id] = true;
-                            cssModule.appendSources.push(this._bundleCssModule(x));
+                            extractedCssArr.push(this._bundleCssModule(x));
                         }
                     }
                     else {
@@ -337,6 +337,7 @@ class NSPack {
             }
         };
         extractRec(jsModule.dependencies);
+        jsModule.extractedCss = extractedCssArr.join("\n");
         jsModule.cssExtracted = true;
     }
     _transformCssInJs(jsModule) {
@@ -581,12 +582,12 @@ class NSPack {
                 this._modulesByFullPathName[module.fullPathName].fresh = false;
                 return this._modulesByFullPathName[module.fullPathName];
             }
-            module = new nspack_module_1.default(module, this);
-            module.fresh = true;
-            module.id = this._nextModuleId++;
-            this._modules[module.id] = module;
-            this._modulesByFullPathName[module.fullPathName] = module;
-            return module;
+            const m = new nspack_module_1.default(module, this);
+            m.fresh = true;
+            m.id = this._nextModuleId++;
+            this._modules[m.id] = m;
+            this._modulesByFullPathName[m.fullPathName] = m;
+            return m;
         });
     }
     _resolveModuleFullPathName(moduleName, baseDir) {
@@ -606,6 +607,8 @@ class NSPack {
             let m = this._modules[i];
             if (m) {
                 debug("\t[%o]\t%o\t%o\t%o (%o)", i, m.type, m.builtType, m.name, m.fullPathName);
+                debug("source: %o", m.source);
+                debug("built: %o", m.builtSource);
             }
         }
     }

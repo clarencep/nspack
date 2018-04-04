@@ -32,7 +32,8 @@ export default class NSPackModule implements Module {
     outputName?: string;
 
     processed: boolean = false;
-    cssExtracted: boolean = false;
+    processing: Promise<any>|false = false;
+
     isExternal: boolean = false;
     isInternal: boolean = false;
     needUpdate: boolean = false;
@@ -41,6 +42,9 @@ export default class NSPackModule implements Module {
     libName: string;
     libTarget: string;
     amdExecOnDef: boolean = false;
+
+    cssExtracted: boolean = false;
+    extractedCss: string = '';
 
     private _packer: () => Packer;
     private encoding: string|null;

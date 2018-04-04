@@ -17,7 +17,7 @@ import {
     parallelLimit,
 } from './utils'
 
-import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult, PackerConfigArg } from './nspack-interface';
+import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult, PackerConfigArg, NewModule } from './nspack-interface';
 import { sanitizeAndFillConfig } from './nspacker-config';
 
 const babel = require('babel-core')
@@ -277,7 +277,7 @@ export default class NSPack implements Packer {
         }) : ''
 
         cssModule.valid = !!(cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0))
-        cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule) : undefined
+        cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule, jsModule) : undefined
         cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
         cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : ''
         cssModule.outputName = cssModule.valid ? this._buildOutputName({
@@ -361,15 +361,15 @@ export default class NSPack implements Packer {
 
         return wrapLibrary(jsModule, transpiledCode)
     }
-    _bundleCssModule(cssModule){
-        if (cssModule.appendSources && cssModule.appendSources.length > 0){
-            return (cssModule.builtSource || '') + cssModule.appendSources.join("\n")
+    _bundleCssModule(cssModule: NSPackModule, jsModule: NSPackModule=null): string{
+        if (jsModule && jsModule.extractedCss && jsModule.extractedCss.length > 0){
+            return cssModule.builtSource + jsModule.extractedCss
         }
 
-        return cssModule.builtSource
+        return cssModule.builtSource + ''
     }
-    _extractCssFromJs(jsModule, cssModule){
-        cssModule.appendSources = cssModule.appendSources || []
+    _extractCssFromJs(jsModule: NSPackModule, cssModule: NSPackModule){
+        const extractedCssArr = []
 
         const extracted = {}
         const extractRec = (dependencies) => {
@@ -378,7 +378,7 @@ export default class NSPack implements Packer {
                     if (x.builtType === 'css'){
                         if (!extracted[x.id]){
                             extracted[x.id] = true
-                            cssModule.appendSources.push(
+                            extractedCssArr.push(
                                 this._bundleCssModule(x)
                             )
                         }
@@ -390,9 +390,11 @@ export default class NSPack implements Packer {
         }
 
         extractRec(jsModule.dependencies)
+
+        jsModule.extractedCss = extractedCssArr.join("\n")
         jsModule.cssExtracted = true
     }
-    _transformCssInJs(jsModule){
+    _transformCssInJs(jsModule: NSPackModule){
         const transformed = {}
         const transformRec = (dependencies) => {
             if (dependencies) {
@@ -410,7 +412,7 @@ export default class NSPack implements Packer {
 
         transformRec(jsModule.dependencies)
     }
-    _transformCssModuleToInjectCssScript(module){
+    _transformCssModuleToInjectCssScript(module: NSPackModule){
         const injectStyleModule = this._getInjectStyleModule()
         const styleText = JSON.stringify(module.builtSource)
         module.builtSource = `module.exports = __require_module__(${injectStyleModule.id}/*${injectStyleModule.name}*/)(${styleText})`
@@ -421,7 +423,7 @@ export default class NSPack implements Packer {
         const injectStyleModuleName = '__inject_style__'
         return this._addInternalModule(injectStyleModuleName, getInjectStyleModuleSource)
     }
-    _addInternalModule(moduleName, getModuleSource){
+    _addInternalModule(moduleName: string, getModuleSource: () => string|Buffer){
         const moduleFile = 'internal://' + moduleName
         if (moduleFile in this._modulesByFullPathName){
             return this._modulesByFullPathName[moduleFile]
@@ -521,7 +523,7 @@ export default class NSPack implements Packer {
 
         return manifests
     }
-    _buildOutputName({type, name, hash}){
+    _buildOutputName({type, name, hash}: {type: string, name: string, hash: string}){
         const defaultOutputConfig = this._config.output['*']
         const moduleOutputConfig = this._config.output[name] || defaultOutputConfig
         const template = moduleOutputConfig[type] || defaultOutputConfig[type]
@@ -561,12 +563,12 @@ export default class NSPack implements Packer {
 
         await outputFile.write()
     }
-    async _writeOutputFile(filename, content, encoding='utf8'){
+    async _writeOutputFile(filename: string, content: string|Buffer, encoding='utf8'){
         const filePath = this._resolveOutputFile(filename)
         await this._mkdirIfNotExists(path.dirname(filePath))
         await this._writeFile(filePath, content, encoding)
     }
-    async _resolveModule(moduleName, baseDir, resolvingParents){
+    async _resolveModule(moduleName: string, baseDir: string, resolvingParents: string){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
 
         if (moduleName in this._config.externals){
@@ -583,7 +585,7 @@ export default class NSPack implements Packer {
 
         return module
     }
-    async _processModule(module){
+    async _processModule(module: NSPackModule){
         if (module.processed && !module.needUpdate){
             this.debugLevel > 3 && debug("ignore module %o in %o (processed and do not need update)", module.name, module.baseDir || module.fullFileDirName)
             return module
@@ -616,7 +618,7 @@ export default class NSPack implements Packer {
         module.processing = false
         return module
     }
-    async _addModuleIfNotExists(module){
+    async _addModuleIfNotExists(module: NewModule): Promise<NSPackModule>{
         if (!('fullPathName' in module)){
             if (module.isInternal || module.isExternal){
                 module.fullPathName = module.file // path.resolve(module.baseDir, module.file)
@@ -637,16 +639,16 @@ export default class NSPack implements Packer {
             return this._modulesByFullPathName[module.fullPathName]
         }
 
-        module = new NSPackModule(module, this)
-        module.fresh = true
-        module.id = this._nextModuleId++
+        const m = new NSPackModule(module, this)
+        m.fresh = true
+        m.id = this._nextModuleId++
 
-        this._modules[module.id] = module
-        this._modulesByFullPathName[module.fullPathName] = module
+        this._modules[m.id] = m
+        this._modulesByFullPathName[m.fullPathName] = m
 
-        return module
+        return m
     }
-    async _resolveModuleFullPathName(moduleName, baseDir) {
+    async _resolveModuleFullPathName(moduleName: string, baseDir: string): Promise<string> {
         // if (moduleName[0] === '@'){
         //     return await this._nodeModuleResolver.resolveModuleFullPathName(
         //         path.join(this._config.entryBase, moduleName.substring(1)), 
@@ -663,6 +665,8 @@ export default class NSPack implements Packer {
             if (m){
                 debug("\t[%o]\t%o\t%o\t%o (%o)", 
                     i, m.type, m.builtType, m.name, m.fullPathName)
+                debug("source: %o", m.source)
+                debug("built: %o", m.builtSource)
             }
         }
     }
@@ -712,13 +716,13 @@ export default class NSPack implements Packer {
 
         })
     }
-    _applyHook(hookName, ...args){
+    _applyHook(hookName: string, ...args: any[]): any|Promise<any>{
         const hook = this._config.hooks[hookName]
         if (hook){
             return hook.apply(hook, args)
         }
     }
-    async _checkModulesUpdates(){
+    async _checkModulesUpdates(): Promise<boolean>{
         await Promise.all(
             Object.values(this._modules)
                   .map(m => m._checkIfNeedUpdate0())
@@ -733,7 +737,7 @@ export default class NSPack implements Packer {
     }
 }
 
-function buildJsBundleCode(modules, entryModuleId=0){
+function buildJsBundleCode(modules: NSPackModule[], entryModuleId=0){
     const modulesCodes = []
     
     for (let i = 0, n = modules.length; i < n; i++){
