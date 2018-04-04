@@ -160,6 +160,34 @@ const foo = __require_module__(${stubModules['bar']})
     {
         inputModule: makeTestModule({
             source: `
+import 'bar'
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__require_module__(${stubModules['bar']})
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
+import'bar'
+`
+        }),
+        expected: {
+            builtType: 'js',
+            builtSource: `
+__require_module__(${stubModules['bar']})
+`,
+        },
+    },
+    /////////////////////////////////////////////////
+    {
+        inputModule: makeTestModule({
+            source: `
 import foo from 'bar'
 `
         }),

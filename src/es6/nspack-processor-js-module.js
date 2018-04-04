@@ -92,6 +92,14 @@ function getJsLinesRegexHandlers(resolveModuleId) {
             ($0, $1, $2, $3) => `${$1} __require_module__(${resolveModuleId($3, $2)}/*${$3}*/)`,
         ],
         [
+            // import 'bar';
+            // [0] => `import 'bar'`
+            // [2] => `'`
+            // [3] => `bar`
+            /(^|[^0-9a-zA-Z_.$])import\s*(['"`])(\S+?)['"`]/,
+            ($0, $1, $2, $3) => `${$1}__require_module__(${resolveModuleId($3, $2)})`,
+        ],
+        [
             // import * as foo from 'bar';
             // [0] => `import * as foo from 'bar'`
             // [2] => `foo`
