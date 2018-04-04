@@ -27,6 +27,14 @@ const debug = require('debug')('nspack')
 
 const extend = Object.assign
 
+interface BundleModule  {
+    id: string,
+    name: string,
+    file: string,
+    relativePath?: string,
+    source: string|Buffer,
+}
+
 
 export default class NSPack implements Packer {
     buildTimes: number;
@@ -219,7 +227,7 @@ export default class NSPack implements Packer {
 
         this.debugLevel > 0 && debug(`building entry module %o...(baseDir: %o)`, entryModule.name, baseDir)
 
-        const resolvingJsModule = 
+        const resolvingJsModule: Promise<NSPackModule> = 
                 entryModule.loadJsSource()
                 .then(({sourceCode, filePath}) => 
                     this._addModuleIfNotExists({
@@ -234,7 +242,7 @@ export default class NSPack implements Packer {
                     }))
                 .then(module => this._processModule(module))
 
-        const resolvingCssModule = 
+        const resolvingCssModule: Promise<NSPackModule> = 
                 entryModule.loadCssSource()
                 .catch(e => {
                     if (!entryModule.ignoreMissingCss){
@@ -276,7 +284,7 @@ export default class NSPack implements Packer {
             type: 'js',
         }) : ''
 
-        cssModule.valid = !!(cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0))
+        cssModule.valid = !!(cssModule.source) || cssModule.source === '' || !!(jsModule.extractedCss)
         cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule, jsModule) : undefined
         cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0
         cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : ''
@@ -320,7 +328,7 @@ export default class NSPack implements Packer {
         return entryModule
     }
     async _bundleJsModule(jsModule: NSPackModule){
-        const bundled = newArray(this._nextModuleId)
+        const bundled = newArray<BundleModule>(this._nextModuleId)
         const bundleRec = (module) => {
             if (!bundled[module.id]){
                 bundled[module.id] = {
@@ -737,7 +745,7 @@ export default class NSPack implements Packer {
     }
 }
 
-function buildJsBundleCode(modules: NSPackModule[], entryModuleId=0){
+function buildJsBundleCode(modules: BundleModule[], entryModuleId=0){
     const modulesCodes = []
     
     for (let i = 0, n = modules.length; i < n; i++){

@@ -232,7 +232,7 @@ class NSPack {
                 hash: jsModule.hash,
                 type: 'js',
             }) : '';
-            cssModule.valid = !!(cssModule.source || cssModule.source === '' || (entryModule.extractCssFromJs && cssModule.appendSources && cssModule.appendSources.length > 0));
+            cssModule.valid = !!(cssModule.source) || cssModule.source === '' || !!(jsModule.extractedCss);
             cssModule.outputSource = cssModule.valid ? this._bundleCssModule(cssModule, jsModule) : undefined;
             cssModule.outputSize = cssModule.outputSource ? cssModule.outputSource.length : 0;
             cssModule.hash = cssModule.valid ? this._hash(cssModule.outputSource) : '';

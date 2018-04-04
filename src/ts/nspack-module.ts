@@ -1,6 +1,6 @@
 import {tryFStat, readFile} from './utils'
 import * as path from 'path'
-import { Module, ModuleBuiltType, Packer, NewModule } from './nspack-interface';
+import { Module, ModuleBuiltType, Packer, NewModule, ModuleBundle } from './nspack-interface';
 
 const extend = Object.assign
 const debug = require('debug')('nspack')
@@ -8,7 +8,7 @@ const debug = require('debug')('nspack')
 
 const textFileTypesRe = /^(txt|text|js|jsx|css|less|json|htm|html|vue)$/
 
-export default class NSPackModule implements Module {
+export default class NSPackModule implements Module, ModuleBundle {
     id: number;
     name: string;
     baseDir: string;
@@ -28,8 +28,11 @@ export default class NSPackModule implements Module {
     resolvingParents: string;
     resolvingParentsAndSelf: string;
 
-    outputSource?: string|Buffer;
-    outputName?: string;
+    valid: boolean;
+    outputSource: string|Buffer;
+    outputSize: number;
+    outputName: string;
+    hash: string;
 
     processed: boolean = false;
     processing: Promise<any>|false = false;
