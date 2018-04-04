@@ -59,6 +59,10 @@ class NSPack {
                 this._result = new nspack_built_result_1.default(this);
                 this._modulesProgressBar = new nspack_progress_bar_1.default(' compiling');
                 this._outputProgressBar = new nspack_progress_bar_2.default('   writing');
+                if (this._config.showProgressBar) {
+                    this._modulesProgressBar.show();
+                    this._outputProgressBar.show();
+                }
                 yield this._resolveExternalModules();
                 yield this._buildFromEntries();
                 yield this._outputManifests();

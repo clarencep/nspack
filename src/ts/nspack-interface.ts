@@ -293,6 +293,9 @@ export interface PackerConfig {
 
     // the parallel limit number
     parallelLimit?: number;
+
+    // whether show the progress bar (default is  true)
+    showProgressBar?: boolean;
 }
 
 

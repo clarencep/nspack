@@ -102,6 +102,7 @@ function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
 
     r.parallelLimit = +r.parallelLimit || +process.env.NSPACK_PARALLEL_LIMIT || 10
     
+    r.showProgressBar = (r.showProgressBar === undefined || !!r.showProgressBar)
     
     return r
 }

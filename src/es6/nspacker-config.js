@@ -84,6 +84,7 @@ function _sanitizeAndFillConfigSync(config) {
     this._fs = r.fs || require('fs');
     // babelrc keeps no changed.
     r.parallelLimit = +r.parallelLimit || +process.env.NSPACK_PARALLEL_LIMIT || 10;
+    r.showProgressBar = (r.showProgressBar === undefined || !!r.showProgressBar);
     return r;
 }
 function noop(...args) { }

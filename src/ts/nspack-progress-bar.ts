@@ -6,6 +6,7 @@ export default class NsPackProgressBar {
     private _processed: number = 0;
     private _bar: any;
     private _beginTime: number;
+    private _visible: boolean = false;
 
     constructor(action: string){
         this._action = action
@@ -21,8 +22,20 @@ export default class NsPackProgressBar {
         this._onChange()
     }
 
+    public show(){
+        this._visible = true
+    }
+
+    public hide(){
+        this._visible = false
+        // todo: how to hide the bar??
+    }
 
     private _onChange(){
+        if (!this._visible){
+            return
+        }
+
         if (!this._bar){
             this._bar = new ProgressBar({
                 schema: this._action + '... [:bar] :current/:total :percent :spentTime',
@@ -40,6 +53,8 @@ export default class NsPackProgressBar {
             spentTime: ((Date.now() - this._beginTime) / 1000).toFixed(1) + 's'
         })
     }
+
+
 }
 
 

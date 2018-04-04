@@ -102,8 +102,13 @@ export default class NSPack implements Packer {
             this._builtTimes++
             this.buildBeginAt = new Date()
             this._result = new NSPackBuiltResult(this)
+
             this._modulesProgressBar = new NSPackProgressBar(' compiling')
             this._outputProgressBar  = new NsPackProgressBar('   writing')
+            if (this._config.showProgressBar){
+                this._modulesProgressBar.show()
+                this._outputProgressBar.show()
+            }
             
 
             await this._resolveExternalModules()
