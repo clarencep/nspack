@@ -9,11 +9,11 @@ class NsPackProgressBar {
         this._action = action;
     }
     addTotal(n = 1) {
-        this._total += 1;
+        this._total += n;
         this._onChange();
     }
     processed(n = 1) {
-        this._processed += 1;
+        this._processed += n;
         this._onChange();
     }
     show() {
@@ -33,6 +33,8 @@ class NsPackProgressBar {
                 width: 40,
                 total: this._total,
                 current: 0,
+                blank: '░',
+                filled: '█'
             });
             this._beginTime = Date.now();
         }

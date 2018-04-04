@@ -168,3 +168,8 @@ export const log = Object.assign( function (...args) {
 })
 
 
+
+
+export function isPromise<T>(x: T|Promise<T>): x is Promise<T> {
+    return !!x && typeof x === 'object' && typeof (x as any).then === 'function'
+}

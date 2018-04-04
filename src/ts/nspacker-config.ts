@@ -7,6 +7,7 @@ import {readFile} from './utils'
 
 import defaultModuleProcessors from './nspack-default-processors'
 import NodeModuleResolver from "./node-module-resolver";
+import NSPackOutputFileSystem from "./nspack-output-filesystem";
 
 const extend = Object.assign
 
@@ -96,7 +97,7 @@ function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
 
     this.debugLevel = r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0
 
-    this._fs = r.fs || require('fs')
+    this._ofs = new NSPackOutputFileSystem(r.fs || require('fs'))
 
     // babelrc keeps no changed.
 

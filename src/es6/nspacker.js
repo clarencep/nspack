@@ -22,7 +22,6 @@ const debug = require('debug')('nspack');
 const extend = Object.assign;
 class NSPack {
     constructor(config) {
-        this._fs = fs;
         this._builtTimes = 0;
         this._nextModuleId = 1;
         this._externalModules = {};
@@ -58,9 +57,11 @@ class NSPack {
                 this.buildBeginAt = new Date();
                 this._result = new nspack_built_result_1.default(this);
                 this._modulesProgressBar = new nspack_progress_bar_1.default(' compiling');
+                this._entriesProgressBar = new nspack_progress_bar_1.default('   packing');
                 this._outputProgressBar = new nspack_progress_bar_2.default('   writing');
                 if (this._config.showProgressBar) {
                     this._modulesProgressBar.show();
+                    this._entriesProgressBar.show();
                     this._outputProgressBar.show();
                 }
                 yield this._resolveExternalModules();
@@ -160,6 +161,7 @@ class NSPack {
     }
     _buildFromEntries() {
         return __awaiter(this, void 0, void 0, function* () {
+            this._entriesProgressBar.addTotal(Object.values(this._entries).length);
             // await this._buildFromEntries_serial()
             yield this._buildFromEntries_parrell();
         });
@@ -168,24 +170,14 @@ class NSPack {
         return __awaiter(this, void 0, void 0, function* () {
             yield utils_1.serial(Object.values(this._entries)
                 .filter((x) => !x.processed || x.needUpdate)
-                .map(module => () => this._buildEntryModule(module)
-                .then(module => {
-                module.processed = true;
-                module.needUpdate = false;
-                this._result.modules[module.name] = module;
-            })));
+                .map(module => () => this._buildEntryModule(module)));
         });
     }
     _buildFromEntries_parrell() {
         return __awaiter(this, void 0, void 0, function* () {
             yield utils_1.parallelLimit(Object.values(this._entries)
                 .filter((x) => !x.processed || x.needUpdate)
-                .map(module => () => this._buildEntryModule(module)
-                .then(module => {
-                module.processed = true;
-                module.needUpdate = false;
-                this._result.modules[module.name] = module;
-            })), 
+                .map(module => () => this._buildEntryModule(module)), 
             /*limit=*/ this._config.parallelLimit);
         });
     }
@@ -271,6 +263,9 @@ class NSPack {
                 this._outputFile(htmlOutputName, html.sourceCode, entryModule, 'html'),
             ]);
             entryModule.processed = true;
+            entryModule.needUpdate = false;
+            this._result.modules[entryModule.name] = entryModule;
+            this._entriesProgressBar.processed();
             return entryModule;
         });
     }
@@ -524,8 +519,8 @@ class NSPack {
     _writeOutputFile(filename, content, encoding = 'utf8') {
         return __awaiter(this, void 0, void 0, function* () {
             const filePath = this._resolveOutputFile(filename);
-            yield this._mkdirIfNotExists(path.dirname(filePath));
-            yield this._writeFile(filePath, content, encoding);
+            yield this._ofs.mkdirIfNotExists(path.dirname(filePath));
+            yield this._ofs.writeFile(filePath, content, encoding);
         });
     }
     _resolveModule(moduleName, baseDir, resolvingParents) {
@@ -639,48 +634,6 @@ class NSPack {
             debug("\t\t%o: %o", entryModule.bundle.style.outputName, entryModule.bundle.style.hash);
             debug("\t\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash);
         }
-    }
-    _writeFile(filePathName, data, encoding) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
-                this._fs.writeFile(filePathName, data, encoding, (err) => {
-                    if (err) {
-                        utils_1.log.error(`Error: failed to write to file "${filePathName}", detail: `, err);
-                        reject(err);
-                    }
-                    else {
-                        resolve();
-                    }
-                });
-            });
-        });
-    }
-    _mkdirIfNotExists(fileDir) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
-                this._fs.stat(fileDir, (err, st) => {
-                    if (err) {
-                        this._fs.mkdir(fileDir, (err) => {
-                            if (err && err.code !== 'EEXIST') {
-                                utils_1.log.error(`Error: failed to mkdir "${fileDir}", detail: `, err);
-                                reject(err);
-                            }
-                            else {
-                                resolve();
-                            }
-                        });
-                    }
-                    else {
-                        if (!st || !st.isDirectory()) {
-                            reject(new Error(`Invalid path/directory: ${fileDir}`));
-                        }
-                        else {
-                            resolve();
-                        }
-                    }
-                });
-            });
-        });
     }
     _applyHook(hookName, ...args) {
         const hook = this._config.hooks[hookName];

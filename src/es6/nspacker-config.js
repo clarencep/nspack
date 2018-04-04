@@ -12,6 +12,7 @@ const nspack_entry_module_1 = require("./nspack-entry-module");
 const path = require("path");
 const nspack_default_processors_1 = require("./nspack-default-processors");
 const node_module_resolver_1 = require("./node-module-resolver");
+const nspack_output_filesystem_1 = require("./nspack-output-filesystem");
 const extend = Object.assign;
 function sanitizeAndFillConfig(config) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -81,7 +82,7 @@ function _sanitizeAndFillConfigSync(config) {
     }, r.hooks || {});
     r.watchInterval = +r.watchInterval || 500;
     this.debugLevel = r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0;
-    this._fs = r.fs || require('fs');
+    this._ofs = new nspack_output_filesystem_1.default(r.fs || require('fs'));
     // babelrc keeps no changed.
     r.parallelLimit = +r.parallelLimit || +process.env.NSPACK_PARALLEL_LIMIT || 10;
     r.showProgressBar = (r.showProgressBar === undefined || !!r.showProgressBar);

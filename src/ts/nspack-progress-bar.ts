@@ -13,12 +13,12 @@ export default class NsPackProgressBar {
     }
 
     public addTotal(n=1){
-        this._total += 1
+        this._total += n
         this._onChange()
     }
 
     public processed(n=1){
-        this._processed += 1
+        this._processed += n
         this._onChange()
     }
 
@@ -42,6 +42,8 @@ export default class NsPackProgressBar {
                 width: 40,
                 total: this._total,
                 current: 0,
+                blank: '░',
+                filled: '█'
             })
 
             this._beginTime = Date.now()

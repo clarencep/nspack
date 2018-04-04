@@ -167,3 +167,7 @@ exports.log = Object.assign(function (...args) {
         exports.log(chalk.red(msg), ...args);
     },
 });
+function isPromise(x) {
+    return !!x && typeof x === 'object' && typeof x.then === 'function';
+}
+exports.isPromise = isPromise;

@@ -22,6 +22,7 @@ import {
 import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult, PackerConfigArg, NewModule } from './nspack-interface';
 import { sanitizeAndFillConfig } from './nspacker-config';
 import NsPackProgressBar from './nspack-progress-bar';
+import NSPackOutputFileSystem from './nspack-output-filesystem';
 
 const babel = require('babel-core')
 const md5 = require('md5')
@@ -47,7 +48,7 @@ export default class NSPack implements Packer {
     buildEndAt: Date;
 
     _config: PackerConfig;
-    _fs: FileSystem = fs;
+    _ofs: NSPackOutputFileSystem;
     _builtTimes: number = 0;
     _nextModuleId: number = 1;
     _externalModules: {[name: string]: NSPackModule} = {};
@@ -66,6 +67,7 @@ export default class NSPack implements Packer {
 
     _configResolving: Promise<any>;
 
+    _entriesProgressBar: NsPackProgressBar;
     _modulesProgressBar: NSPackProgressBar;
     _outputProgressBar: NSPackProgressBar;
 
@@ -104,9 +106,11 @@ export default class NSPack implements Packer {
             this._result = new NSPackBuiltResult(this)
 
             this._modulesProgressBar = new NSPackProgressBar(' compiling')
+            this._entriesProgressBar = new NSPackProgressBar('   packing')
             this._outputProgressBar  = new NsPackProgressBar('   writing')
             if (this._config.showProgressBar){
                 this._modulesProgressBar.show()
+                this._entriesProgressBar.show()
                 this._outputProgressBar.show()
             }
             
@@ -206,6 +210,7 @@ export default class NSPack implements Packer {
         await Promise.all(jobs)
     }
     async _buildFromEntries(){
+        this._entriesProgressBar.addTotal(Object.values(this._entries).length)
         // await this._buildFromEntries_serial()
         await this._buildFromEntries_parrell()
     }
@@ -213,29 +218,17 @@ export default class NSPack implements Packer {
         await serial(
             Object.values(this._entries)
                   .filter((x: EntryModule) => !x.processed || x.needUpdate)
-                  .map(module => 
-                            () => this._buildEntryModule(module)
-                                        .then(module => {
-                                            module.processed = true
-                                            module.needUpdate = false
-                                            this._result.modules[module.name] = module
-                                        })))
+                  .map(module => () => this._buildEntryModule(module)))
     }
     async _buildFromEntries_parrell(){
         await parallelLimit(
             Object.values(this._entries)
                   .filter((x: EntryModule) => !x.processed || x.needUpdate)
-                  .map(module => 
-                            () => this._buildEntryModule(module)
-                                        .then(module => {
-                                            module.processed = true
-                                            module.needUpdate = false
-                                            this._result.modules[module.name] = module
-                                        })),
+                  .map(module => () => this._buildEntryModule(module)),
             /*limit=*/this._config.parallelLimit,
         )
     }
-    async _buildEntryModule(entryModule: NSPackEntryModule){
+    async _buildEntryModule(entryModule: NSPackEntryModule): Promise<NSPackEntryModule>{
         const baseDir = entryModule.baseDir
 
         this.debugLevel > 0 && debug(`building entry module %o...(baseDir: %o)`, entryModule.name, baseDir)
@@ -333,6 +326,10 @@ export default class NSPack implements Packer {
         ])
 
         entryModule.processed = true
+        entryModule.needUpdate = false
+        this._result.modules[entryModule.name] = entryModule
+        this._entriesProgressBar.processed()
+
         return entryModule
     }
     async _bundleJsModule(jsModule: NSPackModule){
@@ -586,8 +583,8 @@ export default class NSPack implements Packer {
     }
     async _writeOutputFile(filename: string, content: string|Buffer, encoding='utf8'){
         const filePath = this._resolveOutputFile(filename)
-        await this._mkdirIfNotExists(path.dirname(filePath))
-        await this._writeFile(filePath, content, encoding)
+        await this._ofs.mkdirIfNotExists(path.dirname(filePath))
+        await this._ofs.writeFile(filePath, content, encoding)
     }
     async _resolveModule(moduleName: string, baseDir: string, resolvingParents: string){
         this.debugLevel > 0 && debug(`resolving %o in %o`, moduleName, baseDir)
@@ -709,42 +706,6 @@ export default class NSPack implements Packer {
             debug("\t\t%o: %o", entryModule.bundle.style.outputName, entryModule.bundle.style.hash)
             debug("\t\t%o: %o", entryModule.bundle.html.outputName, entryModule.bundle.html.hash)
         }
-    }
-    async _writeFile(filePathName: string, data: string|Buffer, encoding: string): Promise<any>{
-        return new Promise((resolve, reject) => {
-            this._fs.writeFile(filePathName, data, encoding, (err) => {
-                if (err){
-                    log.error(`Error: failed to write to file "${filePathName}", detail: `, err)
-                    reject(err)
-                } else {
-                    resolve()
-                }
-            })
-        })
-    }
-    async _mkdirIfNotExists(fileDir: string): Promise<any>{
-        return new Promise((resolve, reject) => {
-            this._fs.stat(fileDir, (err, st) => {
-                if (err){
-                    this._fs.mkdir(fileDir, (err: any) => {
-                        if (err && err.code !== 'EEXIST'){
-                            log.error(`Error: failed to mkdir "${fileDir}", detail: `, err)
-                            reject(err)
-                        } else {
-                            resolve()
-                        }
-                    })
-                } else {
-                    if (!st || !st.isDirectory()){
-                        reject(new Error(`Invalid path/directory: ${fileDir}`))
-                    } else {
-                        resolve()
-                    }
-                }
-    
-            })
-
-        })
     }
     _applyHook(hookName: string, ...args: any[]): any|Promise<any>{
         const hook = this._config.hooks[hookName]
