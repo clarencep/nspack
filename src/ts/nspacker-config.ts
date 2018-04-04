@@ -1,4 +1,4 @@
-import {PackerConfig, EntryConfigItem, EntryContentReader, EntryFilePath, EntryContent, EntrySourceCode, EntryModule} from "./nspack-interface"
+import {PackerConfig, EntryConfigItem, EntryContentReader, EntryFilePath, EntryContent, EntrySourceCode, EntryModule, PackerConfigArg} from "./nspack-interface"
 import NSPacker from "./nspacker"
 import NSPackEntryModule from "./nspack-entry-module";
 import * as fs from 'fs'
@@ -6,10 +6,44 @@ import * as path from 'path'
 import {readFile} from './utils'
 
 import defaultModuleProcessors from './nspack-default-processors'
+import NodeModuleResolver from "./node-module-resolver";
 
 const extend = Object.assign
 
-export function sanitizeAndFillConfig(this: NSPacker, config: PackerConfig){
+export async function sanitizeAndFillConfig(this: NSPacker, config: PackerConfigArg): Promise<any>{
+    if (isPackerConfig(config)){
+        return _sanitizeAndFillConfigSync.call(this, config)
+    }
+
+    if (typeof config === 'function'){
+        const cfg = config()
+        if (isPromise(cfg)){
+            return this._configResolving = cfg
+                .then((v) => _sanitizeAndFillConfigSync.call(this, v))
+                .then(() => {
+                    this._configResolving = null
+                })
+        } 
+        
+        if (isPackerConfig(cfg)){
+            return _sanitizeAndFillConfigSync.call(this, cfg)
+        }
+        
+        throw new Error("Invalid configuration resolve -- return value is not a Promise or a valid PackerConfig object.")
+    }
+
+    throw new Error("Invalid configuration -- it should be a PackerConfig object or a sync function or an async function returns a PackerConfig object")
+}
+
+function isPromise(x: any): x is PromiseLike<any> {
+    return !!(typeof x === 'object' && x && typeof x.then === 'function')
+}
+
+function isPackerConfig(x: PackerConfigArg): x is PackerConfig{
+    return !!(typeof x === 'object' && x && x.entry)
+}
+
+function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
     const r = this._config = {...config}
 
     if (!r.entryBase){
@@ -43,6 +77,8 @@ export function sanitizeAndFillConfig(this: NSPacker, config: PackerConfig){
             '@': r.entryBase,
         },
     }, r.resolve || {})
+    
+    this._nodeModuleResolver = new NodeModuleResolver(this._config.resolve)
 
     r.moduleProcessors = {...defaultModuleProcessors, ...r.moduleProcessors}
 
@@ -60,6 +96,8 @@ export function sanitizeAndFillConfig(this: NSPacker, config: PackerConfig){
     this._fs = r.fs || require('fs')
 
     // babelrc keeps no changed.
+
+    
     
     return r
 }

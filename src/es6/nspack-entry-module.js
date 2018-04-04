@@ -53,10 +53,25 @@ class NSPackEntryModule {
         return this._loadSource(this.js, '.js');
     }
     loadCssSource() {
-        return this._loadSource(this.css, '.js');
+        return this._loadSource(this.css, '.css');
     }
     loadHtmlSource() {
-        return this._loadSource(this.html, '.js');
+        return __awaiter(this, void 0, void 0, function* () {
+            // html source should be executed
+            const data = yield this.html.call(this, this);
+            if (data.filePath) {
+                const filePath = path.resolve(this.baseDir, data.filePath);
+                if (/\.js$/.test(filePath)) {
+                    const sourceCodeResolver = require(filePath);
+                    if (typeof sourceCodeResolver !== 'function') {
+                        throw new Error(`Invalid html resolver: ${filePath}. It should export a/an (async) function which returns the HTML source code.`);
+                    }
+                    const sourceCode = yield sourceCodeResolver.call(this, this);
+                    return { filePath, sourceCode };
+                }
+            }
+            return data;
+        });
     }
     _loadSource(reader, fileExtName) {
         return __awaiter(this, void 0, void 0, function* () {

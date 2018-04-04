@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
 const path = require("path");
-const node_module_resolver_1 = require("./node-module-resolver");
 const nspack_built_result_1 = require("./nspack-built-result");
 const nspack_module_1 = require("./nspack-module");
 const utils_1 = require("./utils");
@@ -30,13 +29,14 @@ class NSPack {
         this._entries = {};
         this._isBuilding = false;
         nspacker_config_1.sanitizeAndFillConfig.call(this, config);
-        this._result = new nspack_built_result_1.default(this);
-        this._nodeModuleResolver = new node_module_resolver_1.default(this._config.resolve);
     }
     build() {
         return __awaiter(this, void 0, void 0, function* () {
             if (this._isBuilding) {
                 throw new Error(`The building process already started!`);
+            }
+            if (this._configResolving) {
+                yield this._configResolving;
             }
             try {
                 this._isBuilding = true;
@@ -51,10 +51,10 @@ class NSPack {
                         return this._result;
                     }
                     this.debugLevel > 10 && debug("modules updated, so do build");
-                    this._result = new nspack_built_result_1.default(this);
                 }
                 this._builtTimes++;
                 this.buildBeginAt = new Date();
+                this._result = new nspack_built_result_1.default(this);
                 yield this._resolveExternalModules();
                 yield this._buildFromEntries();
                 yield this._outputManifests();

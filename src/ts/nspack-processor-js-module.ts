@@ -2,6 +2,7 @@ import { Module, Packer } from "./nspack-interface";
 
 const debug = require('debug')('nspack')
 const jsVarRegex = /^[a-zA-Z0-9_$]+$/
+const allCommentLineRegex = /^\s+(\/\/)/
 
 export default async function (module: Module, packer: Packer){
     packer.debugLevel > 1 && debug("process module %o", module.fullPathName)
@@ -55,7 +56,7 @@ export default async function (module: Module, packer: Packer){
         if (processRequires){
             processRequires = line.indexOf('//#!DONT_PROCESS_REQUIRES') < 0
 
-            if (processRequires){
+            if (processRequires && !isAllCommentLine(line)){
                 for (let handler of lineRegexHandlers){
                     line = line.replace(handler[0], handler[1])
                 }
@@ -191,3 +192,9 @@ function parseJsStr(strLiteral: string, strQuote: string): string{
 function convertImportAsToObjectAssign(s: string): string{
     return s.replace(/\bas\b/g, ':')
 }
+
+
+function isAllCommentLine(s: string): boolean{
+    return allCommentLineRegex.test(s)
+}
+

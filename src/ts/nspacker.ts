@@ -17,7 +17,7 @@ import {
     parallelLimit,
 } from './utils'
 
-import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult } from './nspack-interface';
+import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult, PackerConfigArg } from './nspack-interface';
 import { sanitizeAndFillConfig } from './nspacker-config';
 
 const babel = require('babel-core')
@@ -53,16 +53,19 @@ export default class NSPack implements Packer {
     _babelrcFile: string;
     _babelrcObj: any;
 
-    constructor(config: PackerConfig){
-        sanitizeAndFillConfig.call(this, config)
+    _configResolving: Promise<any>;
 
-        this._result = new NSPackBuiltResult(this)
-        this._nodeModuleResolver = new NodeModuleResolver(this._config.resolve)
+    constructor(config: PackerConfigArg){
+        sanitizeAndFillConfig.call(this, config)
     }
     
     async build(): Promise<BuiltResult>{
         if (this._isBuilding){
             throw new Error(`The building process already started!`)
+        }
+
+        if (this._configResolving){
+            await this._configResolving
         }
 
         try {
@@ -80,11 +83,12 @@ export default class NSPack implements Packer {
                 }
 
                 this.debugLevel > 10 && debug("modules updated, so do build")
-                this._result = new NSPackBuiltResult(this)
             }
 
             this._builtTimes++
             this.buildBeginAt = new Date()
+            this._result = new NSPackBuiltResult(this)
+            
 
             await this._resolveExternalModules()
             await this._buildFromEntries()

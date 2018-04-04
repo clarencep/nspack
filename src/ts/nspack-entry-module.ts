@@ -78,10 +78,25 @@ export default class NSPackEntryModule implements EntryModule{
         return this._loadSource(this.js, '.js')
     }
     loadCssSource(): Promise<EntryContent>{
-        return this._loadSource(this.css, '.js')
+        return this._loadSource(this.css, '.css')
     }
-    loadHtmlSource(): Promise<EntryContent>{
-        return this._loadSource(this.html, '.js')
+    async loadHtmlSource(): Promise<EntryContent>{
+        // html source should be executed
+        const data = await this.html.call(this, this)
+        if (data.filePath){
+            const filePath = path.resolve(this.baseDir, data.filePath)
+            if (/\.js$/.test(filePath)){
+                const sourceCodeResolver = require(filePath);
+                if (typeof sourceCodeResolver !== 'function'){
+                    throw new Error(`Invalid html resolver: ${filePath}. It should export a/an (async) function which returns the HTML source code.`)
+                }
+
+                const sourceCode = await sourceCodeResolver.call(this, this)
+                return {filePath, sourceCode}
+            }
+        }
+
+        return data
     }
     async _loadSource(reader: EntryContentReader, fileExtName: string): Promise<EntryContent>{
         const data = await reader.call(this, this)

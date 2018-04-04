@@ -213,6 +213,9 @@ export interface FileSystem{
     writeFile(filepath: string, data: string|Buffer, encoding: string|null, cb: (err: Error) => void);
 }
 
+export type PackerConfigResolver = () => PackerConfig|Promise<PackerConfig>
+export type PackerConfigArg = PackerConfig | PackerConfigResolver
+
 export interface PackerConfig {
     // the base directory for inputs -- then you can use relative path in EntryConfig
     entryBase?: string; // default is the working directory

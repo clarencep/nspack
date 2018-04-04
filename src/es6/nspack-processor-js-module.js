@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug = require('debug')('nspack');
 const jsVarRegex = /^[a-zA-Z0-9_$]+$/;
+const allCommentLineRegex = /^\s+(\/\/)/;
 function default_1(module, packer) {
     return __awaiter(this, void 0, void 0, function* () {
         packer.debugLevel > 1 && debug("process module %o", module.fullPathName);
@@ -48,7 +49,7 @@ function default_1(module, packer) {
             let line = lines[i];
             if (processRequires) {
                 processRequires = line.indexOf('//#!DONT_PROCESS_REQUIRES') < 0;
-                if (processRequires) {
+                if (processRequires && !isAllCommentLine(line)) {
                     for (let handler of lineRegexHandlers) {
                         line = line.replace(handler[0], handler[1]);
                     }
@@ -157,4 +158,7 @@ function parseJsStr(strLiteral, strQuote) {
 }
 function convertImportAsToObjectAssign(s) {
     return s.replace(/\bas\b/g, ':');
+}
+function isAllCommentLine(s) {
+    return allCommentLineRegex.test(s);
 }
