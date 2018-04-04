@@ -1,6 +1,10 @@
 import * as fs from "fs"
 import cb2p from "./cb2p"
 
+const debug = require('debug')('nspack.utils')
+
+const chalk = require('chalk')
+
 // const debug = require('debug')('nspack.utils')
 
 export function readFile(filename: string, encoding: string): Promise<string>;
@@ -9,7 +13,7 @@ export function readFile(filename: string, encoding=null): any{
     return new Promise((resolve, reject) => {
         fs.readFile(filename, {encoding: encoding}, function(err, data){
             if (err){
-                console.error(`Error: failed to read file "${filename}", detail error:`, err)
+                debug(`Error: failed to read file "${filename}", detail error:`, err)
                 reject(err)
             } else {
                 resolve(data)
@@ -22,7 +26,7 @@ export function tryFStat(file: string): Promise<false|fs.Stats>{
     return new Promise<false|fs.Stats>(resolve => {
         fs.stat(file, (err, stats) => {
             if (err){
-                console.error(`Warn: failed to try stat file "${file}", detail error:`, err)
+                debug(`Warn: failed to try stat file "${file}", detail error:`, err)
                 resolve(false)
             } else {
                 resolve(stats)
@@ -35,7 +39,7 @@ export function tryReadFileContent(file: string, encoding='utf8'){
     return new Promise(resolve => {
         fs.readFile(file, encoding, (err, content) => {
             if (err){
-                console.error(`Warn: failed to try read file "${file}", detail error:`, err)
+                debug(`Warn: failed to try read file "${file}", detail error:`, err)
                 resolve(false)
             } else {
                 resolve(content)
@@ -48,7 +52,7 @@ export async function tryReadJsonFileContent(file, encoding='utf8') : Promise<an
     return new Promise(resolve => {
         fs.readFile(file, encoding, (err, content) => {
             if (err){
-                console.error(`Warn: failed to try read JSON file "${file}", detail error:`, err)
+                debug(`Warn: failed to try read JSON file "${file}", detail error:`, err)
                 resolve(false)
             } else {
                 try {
@@ -148,4 +152,19 @@ async function runJobAsPromise(run: Runnable){
 export function extractDefault(module: any): any{
     return module ? (module.__esModule ? module.default : module) : undefined
 }
+
+export const log = Object.assign( function (...args) {
+    console.log(...args)
+}, {
+    info(msg: string, ...args){
+        log(chalk.blue(msg), ...args)
+    },
+    warn(msg: string, ...args){
+        log(chalk.yellow(msg), ...args)
+    },
+    error(msg: string, ...args){
+        log(chalk.red(msg), ...args)
+    },
+})
+
 

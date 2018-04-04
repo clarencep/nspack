@@ -9,11 +9,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require("fs");
+const debug = require('debug')('nspack.utils');
+const chalk = require('chalk');
 function readFile(filename, encoding = null) {
     return new Promise((resolve, reject) => {
         fs.readFile(filename, { encoding: encoding }, function (err, data) {
             if (err) {
-                console.error(`Error: failed to read file "${filename}", detail error:`, err);
+                debug(`Error: failed to read file "${filename}", detail error:`, err);
                 reject(err);
             }
             else {
@@ -27,7 +29,7 @@ function tryFStat(file) {
     return new Promise(resolve => {
         fs.stat(file, (err, stats) => {
             if (err) {
-                console.error(`Warn: failed to try stat file "${file}", detail error:`, err);
+                debug(`Warn: failed to try stat file "${file}", detail error:`, err);
                 resolve(false);
             }
             else {
@@ -41,7 +43,7 @@ function tryReadFileContent(file, encoding = 'utf8') {
     return new Promise(resolve => {
         fs.readFile(file, encoding, (err, content) => {
             if (err) {
-                console.error(`Warn: failed to try read file "${file}", detail error:`, err);
+                debug(`Warn: failed to try read file "${file}", detail error:`, err);
                 resolve(false);
             }
             else {
@@ -56,7 +58,7 @@ function tryReadJsonFileContent(file, encoding = 'utf8') {
         return new Promise(resolve => {
             fs.readFile(file, encoding, (err, content) => {
                 if (err) {
-                    console.error(`Warn: failed to try read JSON file "${file}", detail error:`, err);
+                    debug(`Warn: failed to try read JSON file "${file}", detail error:`, err);
                     resolve(false);
                 }
                 else {
@@ -152,3 +154,16 @@ function extractDefault(module) {
     return module ? (module.__esModule ? module.default : module) : undefined;
 }
 exports.extractDefault = extractDefault;
+exports.log = Object.assign(function (...args) {
+    console.log(...args);
+}, {
+    info(msg, ...args) {
+        exports.log(chalk.blue(msg), ...args);
+    },
+    warn(msg, ...args) {
+        exports.log(chalk.yellow(msg), ...args);
+    },
+    error(msg, ...args) {
+        exports.log(chalk.red(msg), ...args);
+    },
+});

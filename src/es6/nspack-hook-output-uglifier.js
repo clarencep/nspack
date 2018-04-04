@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils_1 = require("./utils");
+const debug = require('debug')('nspack.uglifier');
 const extend = Object.assign;
 exports.default = {
     defaultInstance: getDefaultUglifier,
@@ -116,13 +117,13 @@ class OutputUglifier {
                 options: handler.options,
             });
             if (res.warnings) {
-                console.warn(res.warnings);
+                utils_1.log.warn(res.warnings);
             }
             if (res.error) {
                 throw res.error;
             }
             outputFile.minimizedContent = res.code;
-            console.log(`minfied ${outputFile.filePath}, reduced size from ${utils_1.humanizeSize(outputFile.content.length)} to ${utils_1.humanizeSize(res.code.length)}`);
+            debug(`minfied ${outputFile.filePath}, reduced size from ${utils_1.humanizeSize(outputFile.content.length)} to ${utils_1.humanizeSize(res.code.length)}`);
             yield outputFile.write({
                 filePath: outputFile.minimizedFilePath,
                 content: res.code,

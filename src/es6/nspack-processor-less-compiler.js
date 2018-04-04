@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const less_module_resolver_1 = require("./less-module-resolver");
 const path = require("path");
-const debug = require('debug')('nspack');
+const debug = require('debug')('nspack.lessc');
 const less = require('less');
 var FragmentType;
 (function (FragmentType) {
@@ -81,8 +81,7 @@ function buildFragment(fragment, module, packer) {
                 return r.css;
             }
             catch (e) {
-                console.error(`Error: failed to compile ${module.fullPathName}, detail:`);
-                console.error(e);
+                debug(`Error: failed to compile %o, detail: %o`, module.fullPathName, e);
                 throw new Error(`Error: failed to compile ${module.fullPathName}, detail:` + e);
             }
         }

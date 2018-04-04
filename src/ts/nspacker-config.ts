@@ -100,6 +100,7 @@ function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
 
     // babelrc keeps no changed.
 
+    r.parallelLimit = +r.parallelLimit || +process.env.NSPACK_PARALLEL_LIMIT || 10
     
     
     return r

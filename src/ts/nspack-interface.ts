@@ -284,11 +284,15 @@ export interface PackerConfig {
     // specify the debug level - higher level produce more debug outputs
     debugLevel?: number;
 
+
     // specify the output file system to use.
     fs?: FileSystem;
 
     // specify the babel configuration
     babelrc?: BabelRc;
+
+    // the parallel limit number
+    parallelLimit?: number;
 }
 
 

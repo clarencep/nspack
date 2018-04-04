@@ -2,7 +2,7 @@ import LessModuleResolver from './less-module-resolver'
 import { Module, Packer } from './nspack-interface';
 import * as path from 'path'
 
-const debug = require('debug')('nspack')
+const debug = require('debug')('nspack.lessc')
 const less = require('less')
 
 enum FragmentType {
@@ -92,8 +92,7 @@ async function buildFragment(fragment: Fragment, module: Module, packer: Packer)
             const r = await less.render(fragment.code)
             return r.css
         } catch (e){
-            console.error(`Error: failed to compile ${module.fullPathName}, detail:`)
-            console.error(e)
+            debug(`Error: failed to compile %o, detail: %o`, module.fullPathName,  e)
             throw new Error(`Error: failed to compile ${module.fullPathName}, detail:` + e)
         }
     }

@@ -1,5 +1,8 @@
-import {humanizeSize} from "./utils"
+import {humanizeSize, log} from "./utils"
 import { OutputHookFileInfo } from "./nspack-interface";
+
+
+const debug = require('debug')('nspack.uglifier')
 
 const extend = Object.assign
 
@@ -141,7 +144,7 @@ class OutputUglifier{
         })
 
         if (res.warnings){
-            console.warn(res.warnings)
+            log.warn(res.warnings)
         }
 
         if (res.error){
@@ -149,7 +152,7 @@ class OutputUglifier{
         }
 
         outputFile.minimizedContent = res.code
-        console.log(`minfied ${outputFile.filePath}, reduced size from ${humanizeSize(outputFile.content.length)} to ${humanizeSize(res.code.length)}`)
+        debug(`minfied ${outputFile.filePath}, reduced size from ${humanizeSize(outputFile.content.length)} to ${humanizeSize(res.code.length)}`)
 
         await outputFile.write({
             filePath: outputFile.minimizedFilePath,

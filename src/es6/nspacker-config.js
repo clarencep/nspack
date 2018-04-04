@@ -83,6 +83,7 @@ function _sanitizeAndFillConfigSync(config) {
     this.debugLevel = r.debugLevel = (r.debugLevel === undefined ? +process.env.NSPACK_DEBUG_LEVEL : +r.debugLevel) || 0;
     this._fs = r.fs || require('fs');
     // babelrc keeps no changed.
+    r.parallelLimit = +r.parallelLimit || +process.env.NSPACK_PARALLEL_LIMIT || 10;
     return r;
 }
 function noop(...args) { }

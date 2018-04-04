@@ -12,8 +12,10 @@ const fs = require("fs");
 const path = require("path");
 const nspack_built_result_1 = require("./nspack-built-result");
 const nspack_module_1 = require("./nspack-module");
+const nspack_progress_bar_1 = require("./nspack-progress-bar");
 const utils_1 = require("./utils");
 const nspacker_config_1 = require("./nspacker-config");
+const nspack_progress_bar_2 = require("./nspack-progress-bar");
 const babel = require('babel-core');
 const md5 = require('md5');
 const debug = require('debug')('nspack');
@@ -55,6 +57,8 @@ class NSPack {
                 this._builtTimes++;
                 this.buildBeginAt = new Date();
                 this._result = new nspack_built_result_1.default(this);
+                this._modulesProgressBar = new nspack_progress_bar_1.default(' compiling');
+                this._outputProgressBar = new nspack_progress_bar_2.default('   writing');
                 yield this._resolveExternalModules();
                 yield this._buildFromEntries();
                 yield this._outputManifests();
@@ -68,7 +72,7 @@ class NSPack {
             }
             catch (e) {
                 this._isBuilding = false;
-                console.error(e);
+                utils_1.log.error(e);
                 throw e;
             }
             finally {
@@ -152,8 +156,8 @@ class NSPack {
     }
     _buildFromEntries() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this._buildFromEntries_serial();
-            // await this._buildFromEntries_parrell()
+            // await this._buildFromEntries_serial()
+            yield this._buildFromEntries_parrell();
         });
     }
     _buildFromEntries_serial() {
@@ -178,7 +182,7 @@ class NSPack {
                 module.needUpdate = false;
                 this._result.modules[module.name] = module;
             })), 
-            /*limit=*/ 1);
+            /*limit=*/ this._config.parallelLimit);
         });
     }
     _buildEntryModule(entryModule) {
@@ -213,10 +217,6 @@ class NSPack {
             }))
                 .then(module => this._processModule(module));
             const [jsModule, cssModule] = yield Promise.all([resolvingJsModule, resolvingCssModule]);
-            // // debug:
-            // if (entryModule.name === 'about'){
-            //     console.log('=============about: ', entryModule)
-            // }
             if (entryModule.extractCssFromJs) {
                 this._extractCssFromJs(jsModule, cssModule);
             }
@@ -486,6 +486,13 @@ class NSPack {
     }
     _outputFile(outputName, content, entryModule, outputType) {
         return __awaiter(this, void 0, void 0, function* () {
+            this._outputProgressBar.addTotal();
+            yield this._outputFile_np(outputName, content, entryModule, outputType);
+            this._outputProgressBar.processed();
+        });
+    }
+    _outputFile_np(outputName, content, entryModule, outputType) {
+        return __awaiter(this, void 0, void 0, function* () {
             if (!outputName || !isValidFileContent(content)) {
                 return;
             }
@@ -533,6 +540,14 @@ class NSPack {
         });
     }
     _processModule(module) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this._modulesProgressBar.addTotal();
+            const r = yield this._processModule_np(module);
+            this._modulesProgressBar.processed();
+            return r;
+        });
+    }
+    _processModule_np(module) {
         return __awaiter(this, void 0, void 0, function* () {
             if (module.processed && !module.needUpdate) {
                 this.debugLevel > 3 && debug("ignore module %o in %o (processed and do not need update)", module.name, module.baseDir || module.fullFileDirName);
@@ -626,7 +641,7 @@ class NSPack {
             return new Promise((resolve, reject) => {
                 this._fs.writeFile(filePathName, data, encoding, (err) => {
                     if (err) {
-                        console.error(`Error: failed to write to file "${filePathName}", detail: `, err);
+                        utils_1.log.error(`Error: failed to write to file "${filePathName}", detail: `, err);
                         reject(err);
                     }
                     else {
@@ -643,7 +658,7 @@ class NSPack {
                     if (err) {
                         this._fs.mkdir(fileDir, (err) => {
                             if (err && err.code !== 'EEXIST') {
-                                console.error(`Error: failed to mkdir "${fileDir}", detail: `, err);
+                                utils_1.log.error(`Error: failed to mkdir "${fileDir}", detail: `, err);
                                 reject(err);
                             }
                             else {

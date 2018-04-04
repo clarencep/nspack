@@ -6,6 +6,7 @@ import NodeModuleResolver from './node-module-resolver'
 import NSPackBuiltResult from './nspack-built-result'
 import NSPackModule from './nspack-module'
 import NSPackEntryModule from './nspack-entry-module'
+import NSPackProgressBar from './nspack-progress-bar'
 
 
 import {
@@ -15,10 +16,12 @@ import {
     serial,
     parallel,
     parallelLimit,
+    log,
 } from './utils'
 
 import { EntryModule, PackerConfig, Packer, ModuleResolver, FileSystem, Module, EntryResolver, BuiltResult, PackerConfigArg, NewModule } from './nspack-interface';
 import { sanitizeAndFillConfig } from './nspacker-config';
+import NsPackProgressBar from './nspack-progress-bar';
 
 const babel = require('babel-core')
 const md5 = require('md5')
@@ -63,6 +66,9 @@ export default class NSPack implements Packer {
 
     _configResolving: Promise<any>;
 
+    _modulesProgressBar: NSPackProgressBar;
+    _outputProgressBar: NSPackProgressBar;
+
     constructor(config: PackerConfigArg){
         sanitizeAndFillConfig.call(this, config)
     }
@@ -96,6 +102,8 @@ export default class NSPack implements Packer {
             this._builtTimes++
             this.buildBeginAt = new Date()
             this._result = new NSPackBuiltResult(this)
+            this._modulesProgressBar = new NSPackProgressBar(' compiling')
+            this._outputProgressBar  = new NsPackProgressBar('   writing')
             
 
             await this._resolveExternalModules()
@@ -113,7 +121,7 @@ export default class NSPack implements Packer {
             return this._result
         } catch (e){
             this._isBuilding = false
-            console.error(e)
+            log.error(e)
             throw e
         } finally {
             this._isBuilding = false
@@ -193,8 +201,8 @@ export default class NSPack implements Packer {
         await Promise.all(jobs)
     }
     async _buildFromEntries(){
-        await this._buildFromEntries_serial()
-        // await this._buildFromEntries_parrell()
+        // await this._buildFromEntries_serial()
+        await this._buildFromEntries_parrell()
     }
     async _buildFromEntries_serial(){
         await serial(
@@ -219,7 +227,7 @@ export default class NSPack implements Packer {
                                             module.needUpdate = false
                                             this._result.modules[module.name] = module
                                         })),
-            /*limit=*/1
+            /*limit=*/this._config.parallelLimit,
         )
     }
     async _buildEntryModule(entryModule: NSPackEntryModule){
@@ -262,11 +270,6 @@ export default class NSPack implements Packer {
                 .then(module => this._processModule(module))
 
         const [jsModule, cssModule] = await Promise.all([resolvingJsModule, resolvingCssModule])
-
-        // // debug:
-        // if (entryModule.name === 'about'){
-        //     console.log('=============about: ', entryModule)
-        // }
 
         if (entryModule.extractCssFromJs){
             this._extractCssFromJs(jsModule, cssModule)
@@ -547,6 +550,11 @@ export default class NSPack implements Packer {
         return path.resolve(this._config.outputBase, filename)
     }
     async _outputFile(outputName: string, content: string|Buffer|null, entryModule, outputType){
+        this._outputProgressBar.addTotal()
+        await this._outputFile_np(outputName, content, entryModule, outputType)
+        this._outputProgressBar.processed()
+    }
+    async _outputFile_np(outputName: string, content: string|Buffer|null, entryModule, outputType){
         if (!outputName || !isValidFileContent(content)){
             return
         }
@@ -594,6 +602,15 @@ export default class NSPack implements Packer {
         return module
     }
     async _processModule(module: NSPackModule){
+        this._modulesProgressBar.addTotal()
+
+        const r = await this._processModule_np(module)
+
+        this._modulesProgressBar.processed()
+
+        return r
+    }
+    async _processModule_np(module: NSPackModule){
         if (module.processed && !module.needUpdate){
             this.debugLevel > 3 && debug("ignore module %o in %o (processed and do not need update)", module.name, module.baseDir || module.fullFileDirName)
             return module
@@ -692,7 +709,7 @@ export default class NSPack implements Packer {
         return new Promise((resolve, reject) => {
             this._fs.writeFile(filePathName, data, encoding, (err) => {
                 if (err){
-                    console.error(`Error: failed to write to file "${filePathName}", detail: `, err)
+                    log.error(`Error: failed to write to file "${filePathName}", detail: `, err)
                     reject(err)
                 } else {
                     resolve()
@@ -706,7 +723,7 @@ export default class NSPack implements Packer {
                 if (err){
                     this._fs.mkdir(fileDir, (err: any) => {
                         if (err && err.code !== 'EEXIST'){
-                            console.error(`Error: failed to mkdir "${fileDir}", detail: `, err)
+                            log.error(`Error: failed to mkdir "${fileDir}", detail: `, err)
                             reject(err)
                         } else {
                             resolve()
