@@ -1,6 +1,8 @@
 import * as fs from "fs"
 import cb2p from "./cb2p"
 
+// const debug = require('debug')('nspack.utils')
+
 export function readFile(filename: string, encoding: string): Promise<string>;
 export function readFile(filename: string): Promise<Buffer>;
 export function readFile(filename: string, encoding=null): any{
@@ -99,22 +101,38 @@ export async function parallelLimit(runnables: Runnable[], limitNum=10){
         let runningNum = 0
 
         const start = () => {
-            for (; runningNum < limitNum && ranNum < runnablesNum; 
-                   runningNum++, ranNum++){
+            // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+            //     runningNum, limitNum, ranNum, runnablesNum)
+
+            if (hasRejected){
+                return
+            }
+
+            if (ranNum >= runnablesNum && runningNum <= 0){
+                resolve()
+                return
+            }
+
+            for (; runningNum < limitNum && ranNum < runnablesNum; ){
+                // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+                //     runningNum, limitNum, ranNum, runnablesNum)
+                
                 const run = runnablesArr[ranNum]
                 const job = runJobAsPromise(run)
                 
                 job.then(() => {
                     runningNum--
-
-                    if (!hasRejected){
-                        start()
-                    }
+                    start()
                 }, err => {
                     runningNum--
                     hasRejected = true
                     reject(err)
                 })
+
+                runningNum++
+                ranNum++
+                // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+                //     runningNum, limitNum, ranNum, runnablesNum)
             }
     
         }

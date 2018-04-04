@@ -52,7 +52,10 @@ function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
 
     r.entry = {...config.entry}
     for (let entryName of Object.keys(r.entry)){
-        this._entries[entryName] = new NSPackEntryModule(entryName, r.entry[entryName], this)
+        const entryConfig = r.entry[entryName]
+        if (!r.entryFilter || r.entryFilter(entryName, entryConfig)){
+            this._entries[entryName] = new NSPackEntryModule(entryName, entryConfig, this)
+        }
     }
 
     if (!r.outputBase){
@@ -77,7 +80,7 @@ function _sanitizeAndFillConfigSync(this: NSPacker, config: PackerConfig){
             '@': r.entryBase,
         },
     }, r.resolve || {})
-    
+
     this._nodeModuleResolver = new NodeModuleResolver(this._config.resolve)
 
     r.moduleProcessors = {...defaultModuleProcessors, ...r.moduleProcessors}

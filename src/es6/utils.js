@@ -110,19 +110,32 @@ function parallelLimit(runnables, limitNum = 10) {
             let ranNum = 0;
             let runningNum = 0;
             const start = () => {
-                for (; runningNum < limitNum && ranNum < runnablesNum; runningNum++, ranNum++) {
+                // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+                //     runningNum, limitNum, ranNum, runnablesNum)
+                if (hasRejected) {
+                    return;
+                }
+                if (ranNum >= runnablesNum && runningNum <= 0) {
+                    resolve();
+                    return;
+                }
+                for (; runningNum < limitNum && ranNum < runnablesNum;) {
+                    // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+                    //     runningNum, limitNum, ranNum, runnablesNum)
                     const run = runnablesArr[ranNum];
                     const job = runJobAsPromise(run);
                     job.then(() => {
                         runningNum--;
-                        if (!hasRejected) {
-                            start();
-                        }
+                        start();
                     }, err => {
                         runningNum--;
                         hasRejected = true;
                         reject(err);
                     });
+                    runningNum++;
+                    ranNum++;
+                    // debug("running: %o, limit: %o, ran: %o, runnables: %o", 
+                    //     runningNum, limitNum, ranNum, runnablesNum)
                 }
             };
             start();

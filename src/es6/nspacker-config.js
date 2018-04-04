@@ -49,7 +49,10 @@ function _sanitizeAndFillConfigSync(config) {
     }
     r.entry = Object.assign({}, config.entry);
     for (let entryName of Object.keys(r.entry)) {
-        this._entries[entryName] = new nspack_entry_module_1.default(entryName, r.entry[entryName], this);
+        const entryConfig = r.entry[entryName];
+        if (!r.entryFilter || r.entryFilter(entryName, entryConfig)) {
+            this._entries[entryName] = new nspack_entry_module_1.default(entryName, entryConfig, this);
+        }
     }
     if (!r.outputBase) {
         r.outputBase = path.join(process.cwd(), 'dist');

@@ -178,7 +178,7 @@ class NSPack {
                 module.needUpdate = false;
                 this._result.modules[module.name] = module;
             })), 
-            /*limit=*/ 10);
+            /*limit=*/ 1);
         });
     }
     _buildEntryModule(entryModule) {

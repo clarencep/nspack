@@ -225,6 +225,11 @@ export interface PackerConfig {
         [name: string]: EntryConfig;
     },
 
+    // filter the entry to be built 
+    // -- entries will be built only if this filter evaluated to `true`
+    // -- it is helpful when you just wanna build one or several entries temporarily.
+    entryFilter?: (entryName: string, entryConfig: EntryConfig) => boolean,
+
     // the base directory for output -- then you can use relative path in EntryOutputConfig
     outputBase?: string; // default is the `dist` directory in working directory
 
